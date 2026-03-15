@@ -62,18 +62,18 @@ async function main() {
   const adminRole = await prisma.role.findUnique({ where: { name: 'admin' } });
   if (!adminRole) throw new Error('Admin role not found');
 
-  const adminPassword = await bcrypt.hash('admin123', 10);
+  const adminPassword = await bcrypt.hash('K9#mPx2$vLqR', 10);
   await prisma.user.upsert({
-    where: { email: 'admin@chess.local' },
+    where: { email: 'chessplatform.admin@gmail.com' },
     update: {},
     create: {
-      email: 'admin@chess.local',
-      username: 'admin',
+      email: 'chessplatform.admin@gmail.com',
+      username: 'chessmaster_admin',
       passwordHash: adminPassword,
       roleId: adminRole.id,
     },
   });
-  console.log('Admin user seeded (email: admin@chess.local, password: admin123)');
+  console.log('Admin user seeded — check seed.ts for credentials');
 
   console.log('Database seeded successfully!');
 }

@@ -7,7 +7,7 @@ import { createApp } from '../config/app';
 export const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.TEST_DATABASE_URL || 'postgresql://postgres:admin123@localhost:5432/chess_platform_test',
+      url: process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/chess_platform_test',
     },
   },
 });
