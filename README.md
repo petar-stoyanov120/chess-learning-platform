@@ -186,9 +186,7 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-Seed creates an admin account:
-- **Email:** `admin@chess.local`
-- **Password:** `admin123`
+Seed creates a default admin account — credentials are defined in `backend/prisma/seed.ts`.
 
 ### 2. Set up the frontend
 
