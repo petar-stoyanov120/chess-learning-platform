@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  users     User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  roleId       Int      @map("role_id")
+  isActive            Boolean   @default(true) @map("is_active")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  role            Role             @relation(fields: [roleId], references: [id])
+  refreshTokens   RefreshToken[]
+  lessons         Lesson[]         @relation("LessonAuthor")
+  approvedLessons Lesson[]         @relation("LessonApprover")
+  blogPosts       BlogPost[]       @relation("BlogAuthor")
+  approvedPosts   BlogPost[]       @relation("BlogApprover")
+  lessonProgress  LessonProgress[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lessons Lesson[]
+
+  @@map("categories")
+}
+
+model DifficultyLevel {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lessons Lesson[]
+
+  @@map("difficulty_levels")
+}
+
+model PostStatus {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  lessons   Lesson[]
+  blogPosts BlogPost[]
+
+  @@map("post_statuses")
+}
+
+model Lesson {
+  id                Int      @id @default(autoincrement())
+  title             String
+  slug              String   @unique
+  content           String
+  excerpt           String?
+  authorId          Int      @map("author_id")
+  categoryId        Int      @map("category_id")
+  difficultyLevelId Int      @map("difficulty_level_id")
+  statusId          Int      @map("status_id")
+  coverImageUrl     String?  @map("cover_image_url")
+  sortOrder         Int      @default(0) @map("sort_order")
+  approvedBy        Int?     @map("approved_by")
+  approvedAt        DateTime? @map("approved_at")
+  rejectionReason   String?  @map("rejection_reason")
+  metaDescription   String?  @map("meta_description")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  author     User            @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  approver   User?           @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  category   Category        @relation(fields: [categoryId], references: [id])
+  level      DifficultyLevel @relation(fields: [difficultyLevelId], references: [id])
+  status     PostStatus      @relation(fields: [statusId], references: [id])
+  diagrams       LessonDiagram[]
+  lessonTags     LessonTag[]
+  lessonProgress LessonProgress[]
+  variations     Variation[]
+
+  @@index([statusId])
+  @@index([authorId])
+  @@index([categoryId, difficultyLevelId, statusId])
+  @@map("lessons")
+}
+
+model LessonProgress {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  lessonId    Int      @map("lesson_id")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+model LessonDiagram {
+  id        Int      @id @default(autoincrement())
+  lessonId  Int      @map("lesson_id")
+  fen       String
+  caption   String?
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@map("lesson_diagrams")
+}
+
+model BlogPost {
+  id              Int      @id @default(autoincrement())
+  title           String
+  slug            String   @unique
+  content         String
+  excerpt         String?
+  authorId        Int      @map("author_id")
+  statusId        Int      @map("status_id")
+  coverImageUrl   String?  @map("cover_image_url")
+  approvedBy      Int?     @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  rejectionReason String?  @map("rejection_reason")
+  metaDescription String?  @map("meta_description")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  author       User          @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  approver     User?         @relation("BlogApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  status       PostStatus    @relation(fields: [statusId], references: [id])
+  blogPostTags BlogPostTag[]
+  variations   Variation[]
+
+  @@index([statusId])
+  @@index([authorId])
+  @@map("blog_posts")
+}
+
+model Variation {
+  id         Int       @id @default(autoincrement())
+  name       String
+  notation   String
+  sortOrder  Int       @default(0) @map("sort_order")
+  lessonId   Int?      @map("lesson_id")
+  blogPostId Int?      @map("blog_post_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  lesson   Lesson?   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  blogPost BlogPost? @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@index([blogPostId])
+  @@map("variations")
+}
+
+model Tag {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  slug         String        @unique
+  lessonTags   LessonTag[]
+  blogPostTags BlogPostTag[]
+
+  @@map("tags")
+}
+
+model LessonTag {
+  lessonId Int @map("lesson_id")
+  tagId    Int @map("tag_id")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([lessonId, tagId])
+  @@map("lesson_tags")
+}
+
+model BlogPostTag {
+  blogPostId Int @map("blog_post_id")
+  tagId      Int @map("tag_id")
+
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([blogPostId, tagId])
+  @@map("blog_post_tags")
+}
