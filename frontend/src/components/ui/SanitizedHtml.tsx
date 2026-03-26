@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import DOMPurify from 'dompurify';
 
 interface SanitizedHtmlProps {
   html: string;
@@ -11,8 +10,13 @@ interface SanitizedHtmlProps {
 
 export default function SanitizedHtml({ html, className, as: Tag = 'div' }: SanitizedHtmlProps) {
   const clean = useMemo(() => {
+    // dompurify requires a browser DOM — skip sanitization during SSR (Node.js).
+    // Client-side hydration will re-run this with the real DOMPurify.
     if (typeof window === 'undefined') return html;
-    return DOMPurify.sanitize(html, {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const DOMPurify = require('dompurify') as typeof import('dompurify');
+    const purify = typeof DOMPurify.sanitize === 'function' ? DOMPurify : (DOMPurify as unknown as { default: typeof DOMPurify }).default;
+    return purify.sanitize(html, {
       ADD_TAGS: ['iframe'],
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target'],
     });

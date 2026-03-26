@@ -17,14 +17,17 @@ model Role {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  username     String   @unique
-  passwordHash String   @map("password_hash")
-  roleId       Int      @map("role_id")
+  id                  Int       @id @default(autoincrement())
+  email               String    @unique
+  username            String    @unique
+  passwordHash        String    @map("password_hash")
+  displayName         String?   @map("display_name")
+  avatarUrl           String?   @map("avatar_url")
+  roleId              Int       @map("role_id")
   isActive            Boolean   @default(true) @map("is_active")
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
+  tokenVersion        Int       @default(0) @map("token_version")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
@@ -35,6 +38,8 @@ model User {
   blogPosts       BlogPost[]       @relation("BlogAuthor")
   approvedPosts   BlogPost[]       @relation("BlogApprover")
   lessonProgress  LessonProgress[]
+  bookmarks       Bookmark[]
+  playlists       Playlist[]
 
   @@map("users")
 }
@@ -99,19 +104,22 @@ model Lesson {
   approvedBy        Int?     @map("approved_by")
   approvedAt        DateTime? @map("approved_at")
   rejectionReason   String?  @map("rejection_reason")
+  readingTime       Int?     @map("reading_time")
   metaDescription   String?  @map("meta_description")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  author     User            @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  approver   User?           @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  category   Category        @relation(fields: [categoryId], references: [id])
-  level      DifficultyLevel @relation(fields: [difficultyLevelId], references: [id])
-  status     PostStatus      @relation(fields: [statusId], references: [id])
-  diagrams       LessonDiagram[]
-  lessonTags     LessonTag[]
-  lessonProgress LessonProgress[]
-  variations     Variation[]
+  author          User              @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  approver        User?             @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  category        Category          @relation(fields: [categoryId], references: [id])
+  level           DifficultyLevel   @relation(fields: [difficultyLevelId], references: [id])
+  status          PostStatus        @relation(fields: [statusId], references: [id])
+  diagrams        LessonDiagram[]
+  lessonTags      LessonTag[]
+  lessonProgress  LessonProgress[]
+  variations      Variation[]
+  bookmarks       Bookmark[]
+  playlistLessons PlaylistLesson[]
 
   @@index([statusId])
   @@index([authorId])
@@ -157,6 +165,7 @@ model BlogPost {
   approvedBy      Int?     @map("approved_by")
   approvedAt      DateTime? @map("approved_at")
   rejectionReason String?  @map("rejection_reason")
+  readingTime     Int?     @map("reading_time")
   metaDescription String?  @map("meta_description")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -219,4 +228,46 @@ model BlogPostTag {
 
   @@id([blogPostId, tagId])
   @@map("blog_post_tags")
+}
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  lessonId  Int      @map("lesson_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("bookmarks")
+}
+
+model Playlist {
+  id          Int              @id @default(autoincrement())
+  userId      Int              @map("user_id")
+  name        String
+  description String?
+  isPublic    Boolean          @default(false) @map("is_public")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons PlaylistLesson[]
+
+  @@map("playlists")
+}
+
+model PlaylistLesson {
+  id         Int      @id @default(autoincrement())
+  playlistId Int      @map("playlist_id")
+  lessonId   Int      @map("lesson_id")
+  addedAt    DateTime @default(now()) @map("added_at")
+  sortOrder  Int      @default(0) @map("sort_order")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, lessonId])
+  @@map("playlist_lessons")
 }

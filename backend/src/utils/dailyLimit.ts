@@ -23,7 +23,7 @@ export async function checkDailyLimit(authorId: number, role: string): Promise<v
   if (role === 'admin') return;
   const used = await getDailyPostCount(authorId);
   if (used >= DAILY_LIMIT) {
-    throw new AppError(429, `You have reached your daily limit of ${DAILY_LIMIT} post. Limit resets at midnight UTC.`);
+    throw new AppError(429, `You have reached your daily limit of ${DAILY_LIMIT} ${DAILY_LIMIT === 1 ? 'post' : 'posts'}. Limit resets at midnight UTC.`);
   }
 }
 

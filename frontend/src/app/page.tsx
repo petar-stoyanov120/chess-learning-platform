@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { BlogPostSummary, PaginatedResponse } from '@/lib/types';
 import BlogCard from '@/components/blog/BlogCard';
+import { API_URL } from '@/lib/constants';
 
 async function getRecentPosts() {
   try {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/blog?limit=3`,
+      `${API_URL}/blog?limit=3`,
       { next: { revalidate: 60 } }
     );
     if (!res.ok) return [];

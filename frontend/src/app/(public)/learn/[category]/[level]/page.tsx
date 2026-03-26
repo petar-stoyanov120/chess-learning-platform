@@ -1,10 +1,11 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { LessonSummary } from '@/lib/types';
 import LessonCard from '@/components/lessons/LessonCard';
+import Breadcrumb from '@/components/ui/Breadcrumb';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { API_URL } from '@/lib/constants';
+const API = API_URL;
 
 async function getLessons(category: string, level: string) {
   try {
@@ -33,13 +34,11 @@ export default async function LevelPage({ params }: { params: { category: string
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/learn" className="hover:text-chess-gold">Learn</Link>
-        <span>/</span>
-        <Link href={`/learn/${params.category}`} className="hover:text-chess-gold capitalize">{category.name}</Link>
-        <span>/</span>
-        <span className="capitalize">{level.name}</span>
-      </div>
+      <Breadcrumb items={[
+        { label: 'Learn', href: '/learn' },
+        { label: category.name, href: `/learn/${params.category}`, capitalize: true },
+        { label: level.name, capitalize: true },
+      ]} />
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-chess-dark capitalize">

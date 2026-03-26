@@ -6,6 +6,7 @@ import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { api } from '@/lib/api';
+import { getBaseUrl } from '@/lib/url';
 
 interface RichTextEditorProps {
   content: string;
@@ -41,7 +42,7 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Start
       if (!file || !editor) return;
       try {
         const res = await api.uploadImage(file);
-        const url = `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace('/api/v1', '')}${res.data.url}`;
+        const url = `${getBaseUrl()}${res.data.url}`;
         editor.chain().focus().setImage({ src: url }).run();
       } catch (err) {
         alert('Image upload failed.');

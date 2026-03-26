@@ -26,11 +26,18 @@ const collaboratorNav: NavItem[] = [
   { href: '/collaborator/blog', label: 'My Blog Posts', icon: '✍️' },
 ];
 
+const userNav: NavItem[] = [
+  { href: '/dashboard', label: 'My Dashboard', icon: '🏠' },
+  { href: '/library', label: 'My Library', icon: '🔖' },
+  { href: '/profile', label: 'My Profile', icon: '👤' },
+];
+
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const navItems = user?.role === 'admin' ? adminNav : collaboratorNav;
+  const navItems =
+    user?.role === 'admin' ? adminNav : user?.role === 'collaborator' ? collaboratorNav : userNav;
 
   return (
     <aside className="w-64 bg-chess-dark text-white min-h-screen p-4">
@@ -42,7 +49,8 @@ export default function DashboardSidebar() {
       </div>
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/admin' && item.href !== '/collaborator' && pathname.startsWith(item.href));
+          const exactRoutes = ['/admin', '/collaborator', '/dashboard'];
+          const isActive = pathname === item.href || (!exactRoutes.includes(item.href) && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}

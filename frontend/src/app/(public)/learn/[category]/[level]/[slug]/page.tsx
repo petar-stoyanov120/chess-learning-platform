@@ -4,13 +4,17 @@ import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { Lesson } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
+import Breadcrumb from '@/components/ui/Breadcrumb';
 import ShareButton from '@/components/ui/ShareButton';
 import ProgressTracker from '@/components/lessons/ProgressTracker';
+import LessonActions from '@/components/lessons/LessonActions';
+import LessonVisitTracker from '@/components/lessons/LessonVisitTracker';
 import SanitizedHtml from '@/components/ui/SanitizedHtml';
 
 const LessonSidePanel = dynamic(() => import('@/components/chess/LessonSidePanel'), { ssr: false });
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { API_URL } from '@/lib/constants';
+const API = API_URL;
 
 async function getLesson(slug: string): Promise<Lesson | null> {
   try {
@@ -63,6 +67,7 @@ export default async function LessonPage({ params }: { params: { category: strin
   return (
     <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-10 ${hasSidePanel ? 'max-w-7xl' : 'max-w-4xl'}`}>
       <ProgressTracker slug={params.slug} />
+      <LessonVisitTracker title={lesson.title} href={`/learn/${params.category}/${params.level}/${params.slug}`} />
 
       <div className={hasSidePanel ? 'flex flex-col lg:flex-row gap-10' : undefined}>
         {/* RIGHT COLUMN (board) — first in DOM so it appears on top on mobile */}
@@ -76,16 +81,12 @@ export default async function LessonPage({ params }: { params: { category: strin
 
         {/* LEFT COLUMN (text) — second in DOM but ordered first on desktop */}
         <div className={hasSidePanel ? 'order-2 lg:order-1 flex-1 min-w-0' : undefined}>
-          {/* Breadcrumb */}
-          <div className="flex gap-2 text-sm text-gray-400 mb-6 flex-wrap">
-            <Link href="/learn" className="hover:text-chess-gold">Learn</Link>
-            <span>/</span>
-            <Link href={`/learn/${lesson.category.slug}`} className="hover:text-chess-gold">{lesson.category.name}</Link>
-            <span>/</span>
-            <Link href={`/learn/${lesson.category.slug}/${lesson.level.name}`} className="hover:text-chess-gold capitalize">{lesson.level.name}</Link>
-            <span>/</span>
-            <span className="text-gray-600">{lesson.title}</span>
-          </div>
+          <Breadcrumb items={[
+            { label: 'Learn', href: '/learn' },
+            { label: lesson.category.name, href: `/learn/${lesson.category.slug}` },
+            { label: lesson.level.name, href: `/learn/${lesson.category.slug}/${lesson.level.name}`, capitalize: true },
+            { label: lesson.title },
+          ]} />
 
           {/* Header */}
           <div className="mb-8">
@@ -101,7 +102,10 @@ export default async function LessonPage({ params }: { params: { category: strin
                 by @{lesson.author.username}
                 {lesson.readingTime && <span className="ml-3 text-gray-400">{lesson.readingTime} min read</span>}
               </span>
-              <ShareButton label="🔗 Share this lesson" />
+              <div className="flex items-center gap-2">
+                <LessonActions lessonId={lesson.id} />
+                <ShareButton label="🔗 Share this lesson" />
+              </div>
             </div>
           </div>
 

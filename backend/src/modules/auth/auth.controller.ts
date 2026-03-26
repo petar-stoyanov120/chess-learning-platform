@@ -15,11 +15,20 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  path: '/',
+};
+
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const body = registerSchema.parse(req.body);
-    const result = await authService.register(body.email, body.username, body.password);
-    sendSuccess(res, result, 201);
+    const { refreshToken, ...rest } = await authService.register(body.email, body.username, body.password);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    sendSuccess(res, rest, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(400, err.errors[0].message));
     next(err);
@@ -29,8 +38,9 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const body = loginSchema.parse(req.body);
-    const result = await authService.login(body.email, body.password);
-    sendSuccess(res, result);
+    const { refreshToken, ...rest } = await authService.login(body.email, body.password);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    sendSuccess(res, rest);
   } catch (err) {
     if (err instanceof z.ZodError) return next(new AppError(400, err.errors[0].message));
     next(err);
@@ -39,8 +49,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
 export async function refreshToken(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.body.refreshToken as string;
-    if (!token) return next(new AppError(400, 'Refresh token is required.'));
+    const token = req.cookies?.refreshToken as string | undefined;
+    if (!token) return next(new AppError(401, 'No refresh token provided.'));
     const result = await authService.refresh(token);
     sendSuccess(res, result);
   } catch (err) {
@@ -50,8 +60,9 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
 
 export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
-    const token = req.body.refreshToken as string;
+    const token = req.cookies?.refreshToken as string | undefined;
     if (token) await authService.logout(token);
+    res.clearCookie('refreshToken', { path: '/' });
     sendSuccess(res, { message: 'Logged out successfully.' });
   } catch (err) {
     next(err);

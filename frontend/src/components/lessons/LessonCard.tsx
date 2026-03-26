@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getBaseUrl } from '@/lib/url';
 import { LessonSummary } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
 
@@ -21,7 +22,7 @@ export default function LessonCard({ lesson, completed }: LessonCardProps) {
       {lesson.coverImageUrl && (
         <div className="relative h-40 overflow-hidden">
           <Image
-            src={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace('/api/v1', '')}${lesson.coverImageUrl}`}
+            src={`${getBaseUrl()}${lesson.coverImageUrl}`}
             alt={lesson.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -43,7 +44,10 @@ export default function LessonCard({ lesson, completed }: LessonCardProps) {
         )}
         <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
           <span>by @{lesson.author.username}</span>
-          <span>{new Date(lesson.createdAt).toLocaleDateString()}</span>
+          <div className="flex items-center gap-2">
+            {lesson.readingTime && <span>{lesson.readingTime} min read</span>}
+            <span>{new Date(lesson.createdAt).toLocaleDateString()}</span>
+          </div>
         </div>
       </div>
     </Link>

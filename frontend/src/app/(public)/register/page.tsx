@@ -6,6 +6,20 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
+function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+  if (password.length === 0) return { score: 0, label: '', color: '' };
+  if (password.length < 8) return { score: 1, label: 'Too short', color: 'bg-red-400' };
+  let score = 1;
+  if (/[a-z]/.test(password)) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  if (score <= 2) return { score: 1, label: 'Weak', color: 'bg-red-400' };
+  if (score === 3) return { score: 2, label: 'Fair', color: 'bg-orange-400' };
+  if (score === 4) return { score: 3, label: 'Good', color: 'bg-yellow-400' };
+  return { score: 4, label: 'Strong', color: 'bg-green-500' };
+}
+
 export default function RegisterPage() {
   const { register, user } = useAuth();
   const router = useRouter();
@@ -19,6 +33,8 @@ export default function RegisterPage() {
     router.replace('/');
     return null;
   }
+
+  const strength = getPasswordStrength(password);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +102,21 @@ export default function RegisterPage() {
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-chess-gold focus:border-transparent"
                 placeholder="At least 8 characters"
               />
+              {password.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex gap-1 h-1.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-full transition-colors ${
+                          strength.score >= i ? strength.color : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs mt-1 text-gray-500">{strength.label}</p>
+                </div>
+              )}
             </div>
             <button
               type="submit"

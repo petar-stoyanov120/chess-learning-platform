@@ -1,7 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import * as blogService from './blog.service';
 import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
 import { AppError } from '../../middleware/errorHandler';
+import { variationSchema } from '../../schemas/common';
+
+const createPostSchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters.').max(200, 'Title must be at most 200 characters.'),
+  content: z.string().min(1, 'Content is required.'),
+  excerpt: z.string().max(500).optional(),
+  coverImageUrl: z.string().url('Cover image must be a valid URL.').optional().or(z.literal('')),
+  metaDescription: z.string().max(300, 'Meta description must be at most 300 characters.').optional(),
+  tagIds: z.array(z.number().int().positive()).optional(),
+  variations: z.array(variationSchema).optional(),
+});
+
+const updatePostSchema = createPostSchema.partial();
 
 export async function listPublished(req: Request, res: Response, next: NextFunction) {
   try {
@@ -33,14 +47,18 @@ export async function getAdminPost(req: Request, res: Response, next: NextFuncti
 
 export async function createPost(req: Request, res: Response, next: NextFunction) {
   try {
-    const post = await blogService.createPost(req.user!.id, req.user!.role, req.body);
+    const result = createPostSchema.safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const post = await blogService.createPost(req.user!.id, req.user!.role, result.data);
     sendSuccess(res, post, 201);
   } catch (err) { next(err); }
 }
 
 export async function updatePost(req: Request, res: Response, next: NextFunction) {
   try {
-    const post = await blogService.updatePost(parseInt(req.params.id), req.user!.id, req.user!.role, req.body);
+    const result = updatePostSchema.safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const post = await blogService.updatePost(parseInt(req.params.id), req.user!.id, req.user!.role, result.data);
     sendSuccess(res, post);
   } catch (err) { next(err); }
 }
@@ -61,9 +79,9 @@ export async function approvePost(req: Request, res: Response, next: NextFunctio
 
 export async function rejectPost(req: Request, res: Response, next: NextFunction) {
   try {
-    const reason = req.body.reason as string;
-    if (!reason) return next(new AppError(400, 'Rejection reason is required.'));
-    const post = await blogService.rejectPost(parseInt(req.params.id), reason);
+    const result = z.object({ reason: z.string().min(1, 'Rejection reason is required.') }).safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const post = await blogService.rejectPost(parseInt(req.params.id), result.data.reason);
     sendSuccess(res, post);
   } catch (err) { next(err); }
 }

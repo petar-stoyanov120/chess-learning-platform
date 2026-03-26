@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description: 'Read chess articles, tips, and insights from the ChessLearn community.',
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { API_URL } from '@/lib/constants';
+const API = API_URL;
 
 async function getPosts(page = 1, tag?: string, search?: string) {
   const params = new URLSearchParams({ page: page.toString(), limit: '9' });

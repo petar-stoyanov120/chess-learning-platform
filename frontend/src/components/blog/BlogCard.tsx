@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getBaseUrl } from '@/lib/url';
 import { BlogPostSummary } from '@/lib/types';
 
 interface BlogCardProps {
@@ -12,7 +13,7 @@ export default function BlogCard({ post }: BlogCardProps) {
       {post.coverImageUrl && (
         <div className="relative h-44 overflow-hidden">
           <Image
-            src={`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace('/api/v1', '')}${post.coverImageUrl}`}
+            src={`${getBaseUrl()}${post.coverImageUrl}`}
             alt={post.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -35,7 +36,10 @@ export default function BlogCard({ post }: BlogCardProps) {
         </div>
         <div className="flex items-center justify-between text-xs text-gray-400">
           <span>by @{post.author.username}</span>
-          <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+          <div className="flex items-center gap-2">
+            {post.readingTime && <span>{post.readingTime} min read</span>}
+            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+          </div>
         </div>
       </div>
     </Link>

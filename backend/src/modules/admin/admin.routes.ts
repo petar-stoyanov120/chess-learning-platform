@@ -9,5 +9,6 @@ router.use(authenticate, authorize('admin'));
 
 router.get('/pending', controller.getPending);
 router.get('/stats', controller.getStats);
+router.get('/recent-users', controller.getRecentUsers);
 
 export default router;

@@ -13,6 +13,7 @@ const lessonSelect = {
   slug: true,
   excerpt: true,
   coverImageUrl: true,
+  readingTime: true,
   sortOrder: true,
   approvedAt: true,
   rejectionReason: true,
@@ -128,11 +129,13 @@ export async function createLesson(authorId: number, role: string, data: LessonC
   });
 
   const { tagIds, diagrams, variations, ...rest } = data;
+  const readingTime = estimateReadingTime(data.content);
 
   return prisma.lesson.create({
     data: {
       ...rest,
       slug,
+      readingTime,
       authorId,
       statusId: getStatusId('draft'),
       lessonTags: tagIds ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
@@ -144,32 +147,36 @@ export async function createLesson(authorId: number, role: string, data: LessonC
 }
 
 export async function updateLesson(id: number, requesterId: number, requesterRole: string, data: Partial<LessonCreateInput>) {
-  const lesson = await prisma.lesson.findUnique({ where: { id }, include: { status: true } });
-  if (!lesson) throw new AppError(404, 'Lesson not found.');
-  if (requesterRole !== 'admin' && lesson.authorId !== requesterId) {
-    throw new AppError(403, 'You can only edit your own lessons.');
-  }
-  if (requesterRole !== 'admin' && lesson.status.name === 'published') {
-    throw new AppError(403, 'Cannot edit a published lesson. Contact an admin.');
-  }
+  return prisma.$transaction(async (tx) => {
+    const lesson = await tx.lesson.findUnique({ where: { id }, include: { status: true } });
+    if (!lesson) throw new AppError(404, 'Lesson not found.');
+    if (requesterRole !== 'admin' && lesson.authorId !== requesterId) {
+      throw new AppError(403, 'You can only edit your own lessons.');
+    }
+    if (requesterRole !== 'admin' && lesson.status.name === 'published') {
+      throw new AppError(403, 'Cannot edit a published lesson. Contact an admin.');
+    }
 
-  const { tagIds, diagrams, variations, ...rest } = data;
+    const { tagIds, diagrams, variations, ...rest } = data;
+    const updateData: Record<string, unknown> = { ...rest };
+    if (data.content) updateData.readingTime = estimateReadingTime(data.content);
 
-  return prisma.lesson.update({
-    where: { id },
-    data: {
-      ...rest,
-      lessonTags: tagIds
-        ? { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) }
-        : undefined,
-      diagrams: diagrams
-        ? { deleteMany: {}, create: diagrams }
-        : undefined,
-      variations: variations !== undefined
-        ? { deleteMany: {}, create: variations }
-        : undefined,
-    },
-    select: { ...lessonSelect, content: true },
+    return tx.lesson.update({
+      where: { id },
+      data: {
+        ...updateData,
+        lessonTags: tagIds
+          ? { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) }
+          : undefined,
+        diagrams: diagrams
+          ? { deleteMany: {}, create: diagrams }
+          : undefined,
+        variations: variations !== undefined
+          ? { deleteMany: {}, create: variations }
+          : undefined,
+      },
+      select: { ...lessonSelect, content: true },
+    });
   });
 }
 

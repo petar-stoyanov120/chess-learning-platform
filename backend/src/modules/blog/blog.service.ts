@@ -13,6 +13,7 @@ const postSelect = {
   slug: true,
   excerpt: true,
   coverImageUrl: true,
+  readingTime: true,
   approvedAt: true,
   rejectionReason: true,
   createdAt: true,
@@ -97,11 +98,13 @@ export async function createPost(authorId: number, role: string, data: PostCreat
   });
 
   const { tagIds, variations, ...rest } = data;
+  const readingTime = estimateReadingTime(data.content);
 
   return prisma.blogPost.create({
     data: {
       ...rest,
       slug,
+      readingTime,
       authorId,
       statusId: getStatusId('draft'),
       blogPostTags: tagIds ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
@@ -112,29 +115,33 @@ export async function createPost(authorId: number, role: string, data: PostCreat
 }
 
 export async function updatePost(id: number, requesterId: number, requesterRole: string, data: Partial<PostCreateInput>) {
-  const post = await prisma.blogPost.findUnique({ where: { id }, include: { status: true } });
-  if (!post) throw new AppError(404, 'Blog post not found.');
-  if (requesterRole !== 'admin' && post.authorId !== requesterId) {
-    throw new AppError(403, 'You can only edit your own blog posts.');
-  }
-  if (requesterRole !== 'admin' && post.status.name === 'published') {
-    throw new AppError(403, 'Cannot edit a published post. Contact an admin.');
-  }
+  return prisma.$transaction(async (tx) => {
+    const post = await tx.blogPost.findUnique({ where: { id }, include: { status: true } });
+    if (!post) throw new AppError(404, 'Blog post not found.');
+    if (requesterRole !== 'admin' && post.authorId !== requesterId) {
+      throw new AppError(403, 'You can only edit your own blog posts.');
+    }
+    if (requesterRole !== 'admin' && post.status.name === 'published') {
+      throw new AppError(403, 'Cannot edit a published post. Contact an admin.');
+    }
 
-  const { tagIds, variations, ...rest } = data;
+    const { tagIds, variations, ...rest } = data;
+    const updateData: Record<string, unknown> = { ...rest };
+    if (data.content) updateData.readingTime = estimateReadingTime(data.content);
 
-  return prisma.blogPost.update({
-    where: { id },
-    data: {
-      ...rest,
-      blogPostTags: tagIds
-        ? { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) }
-        : undefined,
-      variations: variations !== undefined
-        ? { deleteMany: {}, create: variations }
-        : undefined,
-    },
-    select: { ...postSelect, content: true },
+    return tx.blogPost.update({
+      where: { id },
+      data: {
+        ...updateData,
+        blogPostTags: tagIds
+          ? { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) }
+          : undefined,
+        variations: variations !== undefined
+          ? { deleteMany: {}, create: variations }
+          : undefined,
+      },
+      select: { ...postSelect, content: true },
+    });
   });
 }
 

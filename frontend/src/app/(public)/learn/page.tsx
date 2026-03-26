@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: 'Browse chess lessons by topic - openings, concepts, and endgames.',
 };
 
+export const revalidate = 60;
+
 const categories = [
   {
     slug: 'openings',
@@ -33,7 +35,33 @@ const categories = [
   },
 ];
 
-export default function LearnPage() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+const LEVELS = ['beginner', 'intermediate', 'advanced'];
+
+// Returns { "openings.beginner": 3, "openings.intermediate": 1, ... }
+async function getLessonCountsByLevel(): Promise<Record<string, number>> {
+  try {
+    const pairs = categories.flatMap((cat) => LEVELS.map((level) => ({ cat: cat.slug, level })));
+    const results = await Promise.allSettled(
+      pairs.map(({ cat, level }) =>
+        fetch(`${API_URL}/lessons?category=${cat}&level=${level}&limit=1`, { next: { revalidate: 60 } })
+          .then((r) => r.json())
+          .then((data: { meta?: { total?: number } }) => ({ key: `${cat}.${level}`, count: data?.meta?.total ?? 0 }))
+      )
+    );
+    const counts: Record<string, number> = {};
+    for (const result of results) {
+      if (result.status === 'fulfilled') counts[result.value.key] = result.value.count;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+export default async function LearnPage() {
+  const counts = await getLessonCountsByLevel();
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="text-center mb-12">
@@ -42,33 +70,45 @@ export default function LearnPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {categories.map((cat) => (
-          <div key={cat.slug} className="card p-8">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className={`bg-gradient-to-br ${cat.color} text-white rounded-2xl p-6 text-center w-full md:w-48 flex-shrink-0`}>
-                <div className="text-5xl mb-2">{cat.icon}</div>
-                <h2 className="text-2xl font-bold">{cat.name}</h2>
-              </div>
-              <div className="flex-1">
-                <p className="text-gray-600 mb-5">{cat.description}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {cat.levels.map((level) => (
-                    <Link
-                      key={level}
-                      href={`/learn/${cat.slug}/${level.toLowerCase()}`}
-                      className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-chess-gold hover:bg-amber-50 transition-all group"
-                    >
-                      <div>
-                        <div className="font-semibold text-gray-900 group-hover:text-chess-gold">{level}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">View lessons →</div>
-                      </div>
-                    </Link>
-                  ))}
+        {categories.map((cat) => {
+          const total = LEVELS.reduce((sum, lvl) => sum + (counts[`${cat.slug}.${lvl}`] ?? 0), 0);
+          return (
+            <div key={cat.slug} className="card p-8">
+              <div className="flex flex-col md:flex-row md:items-center gap-6">
+                <div className={`bg-gradient-to-br ${cat.color} text-white rounded-2xl p-6 text-center w-full md:w-48 flex-shrink-0`}>
+                  <div className="text-5xl mb-2">{cat.icon}</div>
+                  <h2 className="text-2xl font-bold">{cat.name}</h2>
+                  {total > 0 && (
+                    <p className="text-sm opacity-80 mt-1">{total} lesson{total !== 1 ? 's' : ''}</p>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-600 mb-5">{cat.description}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {cat.levels.map((level) => {
+                      const count = counts[`${cat.slug}.${level.toLowerCase()}`] ?? null;
+                      return (
+                        <Link
+                          key={level}
+                          href={`/learn/${cat.slug}/${level.toLowerCase()}`}
+                          className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-100 hover:border-chess-gold hover:bg-amber-50 transition-all group"
+                        >
+                          <div>
+                            <div className="font-semibold text-gray-900 group-hover:text-chess-gold">{level}</div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {count !== null ? `${count} lesson${count !== 1 ? 's' : ''}` : 'View lessons →'}
+                            </div>
+                          </div>
+                          <span className="text-gray-300 group-hover:text-chess-gold text-lg">→</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

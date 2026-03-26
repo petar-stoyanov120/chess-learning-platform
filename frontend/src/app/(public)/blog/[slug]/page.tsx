@@ -3,12 +3,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { BlogPost } from '@/lib/types';
+import Breadcrumb from '@/components/ui/Breadcrumb';
 import ShareButton from '@/components/ui/ShareButton';
 import SanitizedHtml from '@/components/ui/SanitizedHtml';
 
 const LessonSidePanel = dynamic(() => import('@/components/chess/LessonSidePanel'), { ssr: false });
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { API_URL } from '@/lib/constants';
+const API = API_URL;
 
 async function getPost(slug: string): Promise<BlogPost | null> {
   try {
@@ -39,9 +41,10 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
 
   return (
     <div className={`mx-auto px-4 sm:px-6 lg:px-8 py-10 ${hasSidePanel ? 'max-w-7xl' : 'max-w-3xl'}`}>
-      <Link href="/blog" className="text-gray-500 hover:text-chess-gold text-sm mb-6 inline-block">
-        ← Back to Blog
-      </Link>
+      <Breadcrumb items={[
+        { label: 'Blog', href: '/blog' },
+        { label: post.title },
+      ]} />
 
       <div className={hasSidePanel ? 'flex flex-col lg:flex-row gap-10' : undefined}>
         {/* RIGHT COLUMN (board + variations) — first in DOM so it appears on top on mobile */}

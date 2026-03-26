@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useToast } from '@/lib/toast';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Badge from '@/components/ui/Badge';
 
@@ -35,6 +36,7 @@ export default function ApprovalsPage() {
   const [processing, setProcessing] = useState<Record<string, boolean>>({});
   const [rejectModal, setRejectModal] = useState<{ type: 'lesson' | 'post'; id: number } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const toast = useToast();
 
   async function load() {
     try {
@@ -55,7 +57,10 @@ export default function ApprovalsPage() {
     try {
       const path = type === 'lesson' ? `/lessons/${id}/approve` : `/blog/${id}/approve`;
       await api.patch(path, {});
+      toast.success(`${type === 'lesson' ? 'Lesson' : 'Blog post'} approved successfully`);
       await load();
+    } catch {
+      toast.error('Failed to approve. Please try again.');
     } finally {
       setProcessing((p) => ({ ...p, [key]: false }));
     }
@@ -69,7 +74,10 @@ export default function ApprovalsPage() {
       await api.patch(path, { reason });
       setRejectModal(null);
       setRejectReason('');
+      toast.success(`${type === 'lesson' ? 'Lesson' : 'Blog post'} rejected`);
       await load();
+    } catch {
+      toast.error('Failed to reject. Please try again.');
     } finally {
       setProcessing((p) => ({ ...p, [key]: false }));
     }

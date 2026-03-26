@@ -1,13 +1,24 @@
+import fs from 'fs';
+import path from 'path';
 import { config } from './config/envValidation';
 import { createApp } from './config/app';
 import { prisma } from './config/database';
 import { loadStatusCache } from './config/statusCache';
 import { logger } from './config/logger';
 
+async function ensureUploadDirs() {
+  const uploadDir = path.resolve(config.uploadDir);
+  const avatarsDir = path.join(uploadDir, 'avatars');
+  await fs.promises.mkdir(uploadDir, { recursive: true });
+  await fs.promises.mkdir(avatarsDir, { recursive: true });
+  logger.info('Upload directories verified');
+}
+
 async function start() {
   await prisma.$connect();
   logger.info('Database connected');
 
+  await ensureUploadDirs();
   await loadStatusCache();
   logger.info('Status cache loaded');
 

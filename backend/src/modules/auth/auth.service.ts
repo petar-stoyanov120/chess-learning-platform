@@ -72,12 +72,14 @@ export async function login(email: string, password: string) {
   return buildTokenPair(user);
 }
 
-async function buildTokenPair(user: { id: number; email: string; username: string; role: { name: string } }) {
+async function buildTokenPair(user: { id: number; email: string; username: string; role: { name: string }; tokenVersion?: number }) {
+  const tokenVersion = user.tokenVersion ?? 0;
   const payload: AuthUser = {
     id: user.id,
     email: user.email,
     username: user.username,
     role: user.role.name,
+    tokenVersion,
   };
 
   const accessToken = signAccessToken(payload);
@@ -113,6 +115,7 @@ export async function refresh(token: string) {
     email: stored.user.email,
     username: stored.user.username,
     role: stored.user.role.name,
+    tokenVersion: stored.user.tokenVersion,
   };
 
   const accessToken = signAccessToken(payload);
@@ -132,7 +135,10 @@ export async function changePassword(userId: number, oldPassword: string, newPas
   if (!valid) throw new AppError(401, 'Current password is incorrect.');
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash, tokenVersion: { increment: 1 } },
+  });
 
   // Revoke all refresh tokens so user must log in again
   await prisma.refreshToken.deleteMany({ where: { userId } });
@@ -143,7 +149,17 @@ export async function changePassword(userId: number, oldPassword: string, newPas
 export async function getMe(userId: number) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, username: true, isActive: true, createdAt: true, role: { select: { name: true } } },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      isActive: true,
+      createdAt: true,
+      role: { select: { name: true } },
+      _count: { select: { bookmarks: true, playlists: true, lessonProgress: true } },
+    },
   });
   if (!user) throw new AppError(404, 'User not found.');
   return user;

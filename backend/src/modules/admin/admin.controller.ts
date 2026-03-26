@@ -15,3 +15,10 @@ export async function getStats(_req: Request, res: Response, next: NextFunction)
     sendSuccess(res, stats);
   } catch (err) { next(err); }
 }
+
+export async function getRecentUsers(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const users = await adminService.getRecentUsers();
+    sendSuccess(res, users);
+  } catch (err) { next(err); }
+}

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { AuthProvider } from '@/lib/auth';
+import { ToastProvider } from '@/lib/toast';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: {
@@ -23,13 +25,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <ToastProvider>
+            <div className="min-h-screen flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
+              </main>
+              <Footer />
+            </div>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

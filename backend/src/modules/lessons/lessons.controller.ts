@@ -1,8 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import * as lessonsService from './lessons.service';
 import * as progressService from './progress.service';
 import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
 import { AppError } from '../../middleware/errorHandler';
+import { variationSchema } from '../../schemas/common';
+
+const diagramSchema = z.object({
+  fen: z.string().min(1, 'FEN string is required.').max(512, 'FEN string is too long.'),
+  caption: z.string().max(500).optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
+
+const createLessonSchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters.').max(200, 'Title must be at most 200 characters.'),
+  content: z.string().min(1, 'Content is required.'),
+  excerpt: z.string().max(500).optional(),
+  categoryId: z.number().int().positive('Invalid category.'),
+  difficultyLevelId: z.number().int().positive('Invalid difficulty level.'),
+  coverImageUrl: z.string().url('Cover image must be a valid URL.').optional().or(z.literal('')),
+  metaDescription: z.string().max(300, 'Meta description must be at most 300 characters.').optional(),
+  tagIds: z.array(z.number().int().positive()).optional(),
+  diagrams: z.array(diagramSchema).optional(),
+  variations: z.array(variationSchema).optional(),
+});
+
+const updateLessonSchema = createLessonSchema.partial();
 
 export async function listPublished(req: Request, res: Response, next: NextFunction) {
   try {
@@ -41,14 +64,18 @@ export async function getAdminLesson(req: Request, res: Response, next: NextFunc
 
 export async function createLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    const lesson = await lessonsService.createLesson(req.user!.id, req.user!.role, req.body);
+    const result = createLessonSchema.safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const lesson = await lessonsService.createLesson(req.user!.id, req.user!.role, result.data);
     sendSuccess(res, lesson, 201);
   } catch (err) { next(err); }
 }
 
 export async function updateLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    const lesson = await lessonsService.updateLesson(parseInt(req.params.id), req.user!.id, req.user!.role, req.body);
+    const result = updateLessonSchema.safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const lesson = await lessonsService.updateLesson(parseInt(req.params.id), req.user!.id, req.user!.role, result.data);
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }
@@ -69,9 +96,9 @@ export async function approveLesson(req: Request, res: Response, next: NextFunct
 
 export async function rejectLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    const reason = req.body.reason as string;
-    if (!reason) return next(new AppError(400, 'Rejection reason is required.'));
-    const lesson = await lessonsService.rejectLesson(parseInt(req.params.id), reason);
+    const result = z.object({ reason: z.string().min(1, 'Rejection reason is required.') }).safeParse(req.body);
+    if (!result.success) return next(new AppError(400, result.error.errors[0].message));
+    const lesson = await lessonsService.rejectLesson(parseInt(req.params.id), result.data.reason);
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }

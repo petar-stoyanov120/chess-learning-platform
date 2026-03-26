@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import DashboardSidebar from '@/components/layout/DashboardSidebar';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -31,7 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <DashboardSidebar />
       <div className="flex-1 overflow-auto">
         <div className="p-6 md:p-8">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
       </div>
     </div>

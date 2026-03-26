@@ -91,6 +91,10 @@ export default function InteractiveBoard({ fen, onFenChange, size = 340 }: Inter
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const t = val.trim();
+      if (t.length > 10000) {
+        setFenError('Input is too long (max 10,000 characters).');
+        return;
+      }
       if (!t) {
         getChess().reset();
         const f = getChess().fen();

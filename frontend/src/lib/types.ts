@@ -6,11 +6,14 @@ export interface User {
   id: number;
   email: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string;
   isActive: boolean;
   failedLoginAttempts?: number;
   lockedUntil?: string | null;
   createdAt: string;
   role: Role;
+  _count?: { bookmarks: number; playlists: number; lessonProgress: number };
 }
 
 export interface AuthUser {
@@ -65,6 +68,7 @@ export interface LessonSummary {
   slug: string;
   excerpt?: string;
   coverImageUrl?: string;
+  readingTime?: number;
   sortOrder: number;
   approvedAt?: string;
   rejectionReason?: string;
@@ -92,6 +96,7 @@ export interface BlogPostSummary {
   slug: string;
   excerpt?: string;
   coverImageUrl?: string;
+  readingTime?: number;
   approvedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -124,4 +129,28 @@ export interface ApiResponse<T> {
 export interface PaginatedResponse<T> {
   data: T[];
   meta: PaginationMeta;
+}
+
+export interface Bookmark {
+  id: number;
+  lessonId: number;
+  createdAt: string;
+}
+
+export interface Playlist {
+  id: number;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { lessons: number };
+}
+
+export interface PlaylistLesson {
+  id: number;
+  playlistId: number;
+  lessonId: number;
+  addedAt: string;
+  sortOrder: number;
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import Avatar from '@/components/ui/Avatar';
 
 export default function Navbar() {
   const { user, logout, isLoading } = useAuth();
@@ -39,13 +40,17 @@ export default function Navbar() {
               <>
                 {user ? (
                   <div className="flex items-center gap-4">
+                    <Link href="/library" className="hover:text-chess-cream transition-colors text-sm">My Library</Link>
                     <Link
-                      href={user.role === 'admin' ? '/admin' : '/collaborator'}
+                      href={user.role === 'admin' ? '/admin' : user.role === 'collaborator' ? '/collaborator' : '/dashboard'}
                       className="hover:text-chess-cream transition-colors text-sm"
                     >
                       Dashboard
                     </Link>
                     <div className="flex items-center gap-2">
+                      <Link href="/profile">
+                        <Avatar user={user} size="sm" />
+                      </Link>
                       <span className="text-sm text-gray-300">@{user.username}</span>
                       <button
                         onClick={handleLogout}
@@ -90,7 +95,9 @@ export default function Navbar() {
             <Link href="/search" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Search</Link>
             {user ? (
               <>
-                <Link href={user.role === 'admin' ? '/admin' : '/collaborator'} className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Dashboard</Link>
+                <Link href="/library" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>My Library</Link>
+                <Link href="/profile" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Profile</Link>
+                <Link href={user.role === 'admin' ? '/admin' : user.role === 'collaborator' ? '/collaborator' : '/dashboard'} className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Dashboard</Link>
                 <button onClick={handleLogout} className="block px-2 py-2 text-chess-gold">Logout</button>
               </>
             ) : (

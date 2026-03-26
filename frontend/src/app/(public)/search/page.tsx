@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { LessonSummary, BlogPostSummary, PaginatedResponse } from '@/lib/types';
 import Badge from '@/components/ui/Badge';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+import { API_URL } from '@/lib/constants';
+const API = API_URL;
 
 export default function SearchPage() {
   const searchParams = useSearchParams();

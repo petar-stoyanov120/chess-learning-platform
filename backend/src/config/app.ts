@@ -8,6 +8,7 @@ import { rateLimit } from 'express-rate-limit';
 import { config } from './envValidation';
 import { errorHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
+import { setCsrfCookie, verifyCsrf } from '../middleware/csrf';
 import { getDailyPostCount, DAILY_LIMIT } from '../utils/dailyLimit';
 
 // Route imports
@@ -19,6 +20,10 @@ import categoryRoutes from '../modules/categories/categories.routes';
 import tagRoutes from '../modules/tags/tags.routes';
 import uploadRoutes from '../modules/uploads/uploads.routes';
 import adminRoutes from '../modules/admin/admin.routes';
+import searchRoutes from '../modules/search/search.routes';
+import profileRoutes from '../modules/profile/profile.routes';
+import bookmarkRoutes from '../modules/bookmarks/bookmarks.routes';
+import playlistRoutes from '../modules/playlists/playlists.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -42,20 +47,40 @@ export function createApp(): Express {
   app.use('/api', limiter);
 
   // Strict rate limiting for auth endpoints
-  const authLimiter = rateLimit({
+  const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: { error: 'Too many authentication attempts. Please try again later.' },
+    max: 10,
+    message: { error: 'Too many login attempts. Please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use('/api/v1/auth/login', authLimiter);
-  app.use('/api/v1/auth/register', authLimiter);
+  const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    message: { error: 'Too many registration attempts. Try again in an hour.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  const refreshLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: { error: 'Too many refresh attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/v1/auth/login', loginLimiter);
+  app.use('/api/v1/auth/register', registerLimiter);
+  app.use('/api/v1/auth/refresh', refreshLimiter);
 
   // Body parsing
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  // CSRF protection (double-submit cookie pattern)
+  // setCsrfCookie sets the token on every response; verifyCsrf checks it on mutations
+  app.use(setCsrfCookie);
+  app.use(verifyCsrf);
 
   // Static files (uploaded images)
   app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
@@ -69,6 +94,10 @@ export function createApp(): Express {
   app.use('/api/v1/tags', tagRoutes);
   app.use('/api/v1/uploads', uploadRoutes);
   app.use('/api/v1/admin', adminRoutes);
+  app.use('/api/v1/search', searchRoutes);
+  app.use('/api/v1/profile', profileRoutes);
+  app.use('/api/v1/bookmarks', bookmarkRoutes);
+  app.use('/api/v1/playlists', playlistRoutes);
 
   // Daily post limit status
   app.get('/api/v1/daily-limit', authenticate, async (req, res, next) => {
