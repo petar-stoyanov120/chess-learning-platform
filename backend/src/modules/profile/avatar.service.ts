@@ -24,10 +24,13 @@ export async function uploadAvatar(userId: number, file: Express.Multer.File): P
   // Remove the original upload (multer saved the raw file)
   fs.unlink(file.path, () => {});
 
-  // Remove old avatar if exists
-  if (user.avatarUrl) {
-    const oldPath = path.join(config.uploadDir, '..', '..', 'public', user.avatarUrl.replace(/^\/uploads\//, 'uploads/'));
-    fs.unlink(oldPath, () => {});
+  // Remove old avatar if exists — validate path stays within AVATARS_DIR
+  if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/avatars/')) {
+    const filename = path.basename(user.avatarUrl);
+    const oldPath = path.resolve(AVATARS_DIR, filename);
+    if (oldPath.startsWith(path.resolve(AVATARS_DIR) + path.sep)) {
+      fs.unlink(oldPath, () => {});
+    }
   }
 
   const avatarUrl = `/uploads/avatars/${outputName}`;
@@ -40,9 +43,12 @@ export async function removeAvatar(userId: number): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { avatarUrl: true } });
   if (!user) throw new AppError(404, 'User not found.');
 
-  if (user.avatarUrl) {
-    const filePath = path.join(config.uploadDir, user.avatarUrl.replace('/uploads/', ''));
-    fs.unlink(filePath, () => {});
+  if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/avatars/')) {
+    const filename = path.basename(user.avatarUrl);
+    const filePath = path.resolve(AVATARS_DIR, filename);
+    if (filePath.startsWith(path.resolve(AVATARS_DIR) + path.sep)) {
+      fs.unlink(filePath, () => {});
+    }
   }
 
   await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null } });

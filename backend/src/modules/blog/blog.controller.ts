@@ -79,7 +79,7 @@ export async function approvePost(req: Request, res: Response, next: NextFunctio
 
 export async function rejectPost(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = z.object({ reason: z.string().min(1, 'Rejection reason is required.') }).safeParse(req.body);
+    const result = z.object({ reason: z.string().min(1, 'Rejection reason is required.').max(1000, 'Rejection reason must be at most 1000 characters.') }).safeParse(req.body);
     if (!result.success) return next(new AppError(400, result.error.errors[0].message));
     const post = await blogService.rejectPost(parseInt(req.params.id), result.data.reason);
     sendSuccess(res, post);

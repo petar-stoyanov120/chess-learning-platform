@@ -8,12 +8,20 @@ import { config } from '../config/envValidation';
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
+// Derive extension from the validated MIME type, not the user-controlled filename
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, config.uploadDir);
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = MIME_TO_EXT[file.mimetype] ?? '.bin';
     const unique = crypto.randomBytes(16).toString('hex');
     cb(null, `${unique}${ext}`);
   },
@@ -35,12 +43,18 @@ export const uploadImage: RequestHandler = multer({
 const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const AVATAR_MAX = 2 * 1024 * 1024; // 2MB
 
+const AVATAR_MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
 const avatarStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, path.join(config.uploadDir, 'avatars'));
   },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = AVATAR_MIME_TO_EXT[file.mimetype] ?? '.bin';
     const unique = crypto.randomBytes(16).toString('hex');
     cb(null, `${unique}${ext}`);
   },

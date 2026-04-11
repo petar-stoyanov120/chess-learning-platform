@@ -1,6 +1,16 @@
 import nodemailer from 'nodemailer';
 import { logger } from './logger';
 
+/** Escapes user-controlled strings before embedding them in HTML email bodies. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 let transporter: nodemailer.Transporter | null = null;
 
 const smtpHost = process.env.SMTP_HOST;
@@ -27,7 +37,7 @@ export async function sendApprovalEmail(to: string, contentTitle: string, conten
       from: smtpFrom,
       to,
       subject: `Your ${contentType} has been approved!`,
-      html: `<p>Great news! Your ${contentType} <strong>${contentTitle}</strong> has been approved and is now published on ChessLearn.</p>`,
+      html: `<p>Great news! Your ${contentType} <strong>${escapeHtml(contentTitle)}</strong> has been approved and is now published on ChessLearn.</p>`,
     });
   } catch (err) {
     logger.error(err, 'Failed to send approval email');
@@ -41,7 +51,7 @@ export async function sendRejectionEmail(to: string, contentTitle: string, conte
       from: smtpFrom,
       to,
       subject: `Your ${contentType} needs changes`,
-      html: `<p>Your ${contentType} <strong>${contentTitle}</strong> was not approved.</p><p><strong>Reason:</strong> ${reason}</p><p>Please edit and resubmit.</p>`,
+      html: `<p>Your ${contentType} <strong>${escapeHtml(contentTitle)}</strong> was not approved.</p><p><strong>Reason:</strong> ${escapeHtml(reason)}</p><p>Please edit and resubmit.</p>`,
     });
   } catch (err) {
     logger.error(err, 'Failed to send rejection email');

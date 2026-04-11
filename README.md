@@ -118,12 +118,15 @@ Endgames
 - [x] File upload for images
 - [x] SEO-friendly slugs
 - [x] Docker Compose for local database
+- [x] Email notifications on approval/rejection (nodemailer, SMTP configurable)
+- [x] Password change with token revocation (increments `tokenVersion`, invalidates all refresh tokens)
+- [x] Reading time estimates on lessons and blog posts
+- [x] Account lockout after 5 failed login attempts (30-minute lockout, persisted in DB)
+- [x] Security hardening: Content-Security-Policy + HSTS via Helmet, HTML-escaped email bodies, path-traversal protection on avatar deletion, MIME-derived file extensions on upload
 
 ### Planned / Considering
-- [ ] Email notifications on approval/rejection
-- [ ] Password change with token revocation
-- [ ] Reading time estimates
-- [ ] Account lockout after failed login attempts
+- [ ] Full-text search across lessons and blog posts
+- [ ] Comment / discussion threads on lessons
 
 ---
 
