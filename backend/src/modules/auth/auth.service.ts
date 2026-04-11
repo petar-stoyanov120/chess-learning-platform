@@ -31,7 +31,7 @@ export async function register(email: string, username: string, password: string
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: { email, username, passwordHash, roleId: userRole.id },
-    include: { role: true },
+    include: { role: true, club: { select: { id: true, name: true } } },
   });
 
   return buildTokenPair(user);
@@ -40,7 +40,7 @@ export async function register(email: string, username: string, password: string
 export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { role: true },
+    include: { role: true, club: { select: { id: true, name: true } } },
   });
 
   if (!user || !user.isActive) throw new AppError(401, 'Invalid email or password.');
@@ -72,13 +72,14 @@ export async function login(email: string, password: string) {
   return buildTokenPair(user);
 }
 
-async function buildTokenPair(user: { id: number; email: string; username: string; role: { name: string }; tokenVersion?: number }) {
+async function buildTokenPair(user: { id: number; email: string; username: string; role: { name: string }; clubId?: number | null; tokenVersion?: number }) {
   const tokenVersion = user.tokenVersion ?? 0;
   const payload: AuthUser = {
     id: user.id,
     email: user.email,
     username: user.username,
     role: user.role.name,
+    clubId: user.clubId ?? null,
     tokenVersion,
   };
 
@@ -100,7 +101,7 @@ export async function refresh(token: string) {
   const tokenHash = hashToken(token);
   const stored = await prisma.refreshToken.findFirst({
     where: { tokenHash },
-    include: { user: { include: { role: true } } },
+    include: { user: { include: { role: true, club: { select: { id: true, name: true } } } } },
   });
 
   if (!stored || stored.expiresAt < new Date()) {
@@ -115,6 +116,7 @@ export async function refresh(token: string) {
     email: stored.user.email,
     username: stored.user.username,
     role: stored.user.role.name,
+    clubId: stored.user.clubId ?? null,
     tokenVersion: stored.user.tokenVersion,
   };
 

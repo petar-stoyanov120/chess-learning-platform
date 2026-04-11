@@ -58,32 +58,38 @@ export default function CollaboratorPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-chess-dark mb-1">Collaborator Dashboard</h1>
-      <p className="text-gray-500 mb-6">Welcome, @{user?.username}</p>
+      <h1 className="text-2xl font-bold text-chess-dark dark:text-gray-100 mb-1">Collaborator Dashboard</h1>
+      <p className="text-gray-500 dark:text-gray-400 mb-6">Welcome, @{user?.username}</p>
 
       {/* Daily Limit Banner */}
       {dailyLimit && dailyLimit.limit !== null && (
         <div className={`rounded-xl p-4 mb-6 border ${
-          dailyLimit.canPost ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+          dailyLimit.canPost
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
         }`}>
           <div className="flex items-center gap-3">
             <span className="text-xl">{dailyLimit.canPost ? '✅' : '🚫'}</span>
             <div className="flex-1">
-              <p className={`font-medium text-sm ${dailyLimit.canPost ? 'text-green-800' : 'text-red-800'}`}>
+              <p className={`font-medium text-sm ${
+                dailyLimit.canPost
+                  ? 'text-green-800 dark:text-green-200'
+                  : 'text-red-800 dark:text-red-200'
+              }`}>
                 Daily posts: {dailyLimit.used} of {dailyLimit.limit} used
                 {dailyLimit.remaining !== null && dailyLimit.remaining > 0 && (
                   <span className="ml-1">· {dailyLimit.remaining} remaining today</span>
                 )}
               </p>
               {!dailyLimit.canPost && (
-                <p className="text-xs text-red-600 mt-0.5">Daily limit reached. You can post again tomorrow.</p>
+                <p className="text-xs text-red-600 dark:text-red-300 mt-0.5">Daily limit reached. You can post again tomorrow.</p>
               )}
             </div>
             <div className="flex gap-1">
               {Array.from({ length: dailyLimit.limit }).map((_, i) => (
                 <div
                   key={i}
-                  className={`w-4 h-4 rounded-full ${i < dailyLimit.used ? 'bg-red-400' : 'bg-green-300'}`}
+                  className={`w-4 h-4 rounded-full ${i < dailyLimit.used ? 'bg-red-400 dark:bg-red-500' : 'bg-green-300 dark:bg-green-600'}`}
                 />
               ))}
             </div>
@@ -92,19 +98,26 @@ export default function CollaboratorPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Link href="/collaborator/lessons/new" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
           <span className="text-3xl">📚</span>
           <div>
-            <h3 className="font-semibold text-gray-900">Submit a Lesson</h3>
-            <p className="text-sm text-gray-500">Create and submit for review</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Submit a Lesson</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Create and submit for review</p>
           </div>
         </Link>
         <Link href="/collaborator/blog/new" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
           <span className="text-3xl">✍️</span>
           <div>
-            <h3 className="font-semibold text-gray-900">Write a Blog Post</h3>
-            <p className="text-sm text-gray-500">Share your chess knowledge</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Write a Blog Post</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Share your chess knowledge</p>
+          </div>
+        </Link>
+        <Link href="/collaborator/classrooms" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
+          <span className="text-3xl">🏫</span>
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">My Classrooms</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Manage teaching groups</p>
           </div>
         </Link>
       </div>
@@ -113,10 +126,10 @@ export default function CollaboratorPage() {
       {!loading && lessons.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {[
-            { label: 'Published', count: lessonsByStatus.published, color: 'bg-green-50 text-green-700' },
-            { label: 'Pending Review', count: lessonsByStatus.pending, color: 'bg-amber-50 text-amber-700' },
-            { label: 'Draft', count: lessonsByStatus.draft, color: 'bg-gray-50 text-gray-700' },
-            { label: 'Rejected', count: lessonsByStatus.rejected, color: 'bg-red-50 text-red-700' },
+            { label: 'Published', count: lessonsByStatus.published, color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' },
+            { label: 'Pending Review', count: lessonsByStatus.pending, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300' },
+            { label: 'Draft', count: lessonsByStatus.draft, color: 'bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300' },
+            { label: 'Rejected', count: lessonsByStatus.rejected, color: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' },
           ].map((s) => (
             <div key={s.label} className={`${s.color} rounded-xl p-4`}>
               <div className="text-2xl font-bold">{s.count}</div>
@@ -133,17 +146,17 @@ export default function CollaboratorPage() {
           {lessons.length > 0 && (
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-900">Recent Lessons</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">Recent Lessons</h2>
                 <Link href="/collaborator/lessons" className="text-sm text-chess-gold hover:underline">View all →</Link>
               </div>
               <div className="space-y-2">
                 {lessons.map((lesson) => (
                   <div key={lesson.id} className="card p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{lesson.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 capitalize">{lesson.category.name} · {lesson.level.name}</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{lesson.title}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 capitalize">{lesson.category.name} · {lesson.level.name}</p>
                       {lesson.status.name === 'rejected' && lesson.rejectionReason && (
-                        <p className="text-xs text-red-600 mt-1 line-clamp-1">Rejected: {lesson.rejectionReason}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-1">Rejected: {lesson.rejectionReason}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -163,16 +176,16 @@ export default function CollaboratorPage() {
           {posts.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-gray-900">Recent Blog Posts</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">Recent Blog Posts</h2>
                 <Link href="/collaborator/blog" className="text-sm text-chess-gold hover:underline">View all →</Link>
               </div>
               <div className="space-y-2">
                 {posts.map((post) => (
                   <div key={post.id} className="card p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{post.title}</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{post.title}</p>
                       {post.status.name === 'rejected' && post.rejectionReason && (
-                        <p className="text-xs text-red-600 mt-1 line-clamp-1">Rejected: {post.rejectionReason}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 line-clamp-1">Rejected: {post.rejectionReason}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -190,7 +203,7 @@ export default function CollaboratorPage() {
           )}
 
           {lessons.length === 0 && posts.length === 0 && (
-            <div className="card p-10 text-center text-gray-400">
+            <div className="card p-10 text-center text-gray-400 dark:text-gray-500">
               <div className="text-4xl mb-3">✏️</div>
               <p className="text-lg mb-2">No submissions yet</p>
               <p className="text-sm">Start by submitting a lesson or writing a blog post.</p>

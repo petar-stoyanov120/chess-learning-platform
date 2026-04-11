@@ -76,8 +76,8 @@ export default function UserDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-chess-dark mb-1">My Dashboard</h1>
-      <p className="text-gray-500 mb-8">Welcome back, @{user.username}</p>
+      <h1 className="text-2xl font-bold text-chess-dark dark:text-gray-100 mb-1">My Dashboard</h1>
+      <p className="text-gray-500 dark:text-gray-400 mb-8">Welcome back, @{user.username}</p>
 
       {/* Continue Learning */}
       {lastLesson && (
@@ -98,20 +98,20 @@ export default function UserDashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-green-50 rounded-xl p-5">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-5">
           <div className="text-3xl mb-1">✅</div>
-          <div className="text-2xl font-bold text-green-700">{completedCount}</div>
-          <div className="text-sm text-green-600">Lessons completed</div>
+          <div className="text-2xl font-bold text-green-700 dark:text-green-400">{completedCount}</div>
+          <div className="text-sm text-green-600 dark:text-green-500">Lessons completed</div>
         </div>
-        <div className="bg-amber-50 rounded-xl p-5">
+        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-5">
           <div className="text-3xl mb-1">🔖</div>
-          <div className="text-2xl font-bold text-amber-700">{bookmarks.length}</div>
-          <div className="text-sm text-amber-600">Bookmarked lessons</div>
+          <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{bookmarks.length}</div>
+          <div className="text-sm text-amber-600 dark:text-amber-500">Bookmarked lessons</div>
         </div>
-        <div className="bg-purple-50 rounded-xl p-5">
+        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-5">
           <div className="text-3xl mb-1">🎵</div>
-          <div className="text-2xl font-bold text-purple-700">{playlists.length}</div>
-          <div className="text-sm text-purple-600">Playlists</div>
+          <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">{playlists.length}</div>
+          <div className="text-sm text-purple-600 dark:text-purple-500">Playlists</div>
         </div>
       </div>
 
@@ -122,7 +122,7 @@ export default function UserDashboardPage() {
           {/* Bookmarked Lessons */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Bookmarked Lessons</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Bookmarked Lessons</h2>
               <Link href="/library" className="text-sm text-chess-gold hover:underline">View all →</Link>
             </div>
             {bookmarks.length === 0 ? (
@@ -142,7 +142,7 @@ export default function UserDashboardPage() {
           {/* Playlists */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">My Playlists</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">My Playlists</h2>
               <Link href="/library?tab=playlists" className="text-sm text-chess-gold hover:underline">View all →</Link>
             </div>
             {playlists.length === 0 ? (
@@ -170,8 +170,8 @@ export default function UserDashboardPage() {
           </div>
 
           {/* Quick Links */}
-          <div className="mt-8 pt-6 border-t">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Explore</h2>
+          <div className="mt-8 pt-6 border-t dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Explore</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {['openings', 'concepts', 'endgames'].map((cat) => (
                 <Link

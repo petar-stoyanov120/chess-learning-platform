@@ -24,6 +24,7 @@ model User {
   displayName         String?   @map("display_name")
   avatarUrl           String?   @map("avatar_url")
   roleId              Int       @map("role_id")
+  clubId              Int?      @map("club_id")
   isActive            Boolean   @default(true) @map("is_active")
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
@@ -31,16 +32,26 @@ model User {
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  role            Role             @relation(fields: [roleId], references: [id])
-  refreshTokens   RefreshToken[]
-  lessons         Lesson[]         @relation("LessonAuthor")
-  approvedLessons Lesson[]         @relation("LessonApprover")
-  blogPosts       BlogPost[]       @relation("BlogAuthor")
-  approvedPosts   BlogPost[]       @relation("BlogApprover")
-  lessonProgress  LessonProgress[]
-  bookmarks       Bookmark[]
-  playlists       Playlist[]
+  role                     Role                        @relation(fields: [roleId], references: [id])
+  club                     Club?                       @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  refreshTokens            RefreshToken[]
+  lessons                  Lesson[]                    @relation("LessonAuthor")
+  approvedLessons          Lesson[]                    @relation("LessonApprover")
+  blogPosts                BlogPost[]                  @relation("BlogAuthor")
+  approvedPosts            BlogPost[]                  @relation("BlogApprover")
+  lessonProgress           LessonProgress[]
+  bookmarks                Bookmark[]
+  playlists                Playlist[]
+  ownedClassrooms          Classroom[]                 @relation("ClassroomOwner")
+  classroomMembers         ClassroomMember[]
+  puzzleSubmissions        ClassroomPuzzleSubmission[]
+  lessonRatings            LessonRating[]
+  comments                 Comment[]
+  locationCoaches          LocationCoach[]
+  locationNoticesAuthored  LocationNotice[]            @relation("NoticeAuthor")
+  locationNoticesReviewed  LocationNotice[]            @relation("NoticeReviewer")
 
+  @@index([clubId])
   @@map("users")
 }
 
@@ -101,6 +112,7 @@ model Lesson {
   statusId          Int      @map("status_id")
   coverImageUrl     String?  @map("cover_image_url")
   sortOrder         Int      @default(0) @map("sort_order")
+  viewCount         Int      @default(0) @map("view_count")
   approvedBy        Int?     @map("approved_by")
   approvedAt        DateTime? @map("approved_at")
   rejectionReason   String?  @map("rejection_reason")
@@ -109,17 +121,20 @@ model Lesson {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  author          User              @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  approver        User?             @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  category        Category          @relation(fields: [categoryId], references: [id])
-  level           DifficultyLevel   @relation(fields: [difficultyLevelId], references: [id])
-  status          PostStatus        @relation(fields: [statusId], references: [id])
-  diagrams        LessonDiagram[]
-  lessonTags      LessonTag[]
-  lessonProgress  LessonProgress[]
-  variations      Variation[]
-  bookmarks       Bookmark[]
-  playlistLessons PlaylistLesson[]
+  author               User                      @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  approver             User?                     @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  category             Category                  @relation(fields: [categoryId], references: [id])
+  level                DifficultyLevel           @relation(fields: [difficultyLevelId], references: [id])
+  status               PostStatus                @relation(fields: [statusId], references: [id])
+  diagrams             LessonDiagram[]
+  lessonTags           LessonTag[]
+  lessonProgress       LessonProgress[]
+  variations           Variation[]
+  bookmarks            Bookmark[]
+  playlistLessons      PlaylistLesson[]
+  classroomLessons     ClassroomPlaylistLesson[]
+  lessonRatings        LessonRating[]
+  comments             Comment[]
 
   @@index([statusId])
   @@index([authorId])
@@ -270,4 +285,246 @@ model PlaylistLesson {
 
   @@unique([playlistId, lessonId])
   @@map("playlist_lessons")
+}
+
+// ─── Clubs, Locations & Location Notices ────────────────────────────────────
+
+model Club {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  logoUrl     String?  @map("logo_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
+
+  members   User[]
+  locations Location[]
+
+  @@map("clubs")
+}
+
+model Location {
+  id              Int      @id @default(autoincrement())
+  clubId          Int      @map("club_id")
+  name            String
+  description     String?
+  address         String?
+  scheduleInfo    String?  @map("schedule_info") @db.Text
+  addressVisible  Boolean  @default(true)  @map("address_visible")
+  scheduleVisible Boolean  @default(true)  @map("schedule_visible")
+  isActive        Boolean  @default(true)  @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt      @map("updated_at")
+
+  club       Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  coaches    LocationCoach[]
+  classrooms Classroom[]
+  notices    LocationNotice[]
+
+  @@index([clubId])
+  @@index([isActive])
+  @@map("locations")
+}
+
+model LocationCoach {
+  id         Int      @id @default(autoincrement())
+  locationId Int      @map("location_id")
+  userId     Int      @map("user_id")
+  role       String   @default("coach")
+  addedAt    DateTime @default(now()) @map("added_at")
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, userId])
+  @@index([userId])
+  @@map("location_coaches")
+}
+
+model LocationNotice {
+  id         Int       @id @default(autoincrement())
+  locationId Int       @map("location_id")
+  authorId   Int       @map("author_id")
+  title      String
+  content    String    @db.Text
+  status     String    @default("published")
+  expiresAt  DateTime? @map("expires_at")
+  reviewedBy Int?      @map("reviewed_by")
+  reviewedAt DateTime? @map("reviewed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt      @map("updated_at")
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  author   User     @relation("NoticeAuthor",   fields: [authorId],   references: [id], onDelete: Cascade)
+  reviewer User?    @relation("NoticeReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([locationId])
+  @@index([status])
+  @@map("location_notices")
+}
+
+// ─── Classroom / Club System ────────────────────────────────────────────────
+
+model Classroom {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  inviteCode  String   @unique @map("invite_code")
+  ownerId     Int      @map("owner_id")
+  locationId  Int?     @map("location_id")
+  ageMin      Int?     @map("age_min")
+  ageMax      Int?     @map("age_max")
+  isActive    Boolean  @default(true) @map("is_active")
+  tier        String   @default("free")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner            User                @relation("ClassroomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  location         Location?           @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  members          ClassroomMember[]
+  playlists        ClassroomPlaylist[]
+  puzzles          ClassroomPuzzle[]
+  classroomLessons ClassroomLesson[]
+
+  @@index([ownerId])
+  @@index([locationId])
+  @@map("classrooms")
+}
+
+model ClassroomMember {
+  id          Int      @id @default(autoincrement())
+  classroomId Int      @map("classroom_id")
+  userId      Int      @map("user_id")
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  classroom Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomId, userId])
+  @@map("classroom_members")
+}
+
+model ClassroomPlaylist {
+  id           Int      @id @default(autoincrement())
+  classroomId  Int      @map("classroom_id")
+  name         String
+  description  String?
+  teacherIntro String?  @map("teacher_intro")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  classroom Classroom               @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  lessons   ClassroomPlaylistLesson[]
+
+  @@index([classroomId])
+  @@map("classroom_playlists")
+}
+
+model ClassroomPlaylistLesson {
+  id                  Int     @id @default(autoincrement())
+  classroomPlaylistId Int     @map("classroom_playlist_id")
+  lessonId            Int     @map("lesson_id")
+  sortOrder           Int     @default(0) @map("sort_order")
+  teacherNote         String? @map("teacher_note")
+
+  playlist ClassroomPlaylist @relation(fields: [classroomPlaylistId], references: [id], onDelete: Cascade)
+  lesson   Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([classroomPlaylistId, lessonId])
+  @@map("classroom_playlist_lessons")
+}
+
+// ─── Classroom Puzzles ──────────────────────────────────────────────────────
+
+model ClassroomPuzzle {
+  id          Int       @id @default(autoincrement())
+  classroomId Int       @map("classroom_id")
+  lessonId    Int?      @map("lesson_id")
+  title       String
+  description String?   @db.Text
+  fen         String
+  sideToMove  String    @map("side_to_move")
+  solution    String?   @db.Text
+  maxMoves    Int?      @map("max_moves")
+  dueDate     DateTime? @map("due_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  classroom   Classroom                   @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  lesson      ClassroomLesson?            @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  submissions ClassroomPuzzleSubmission[]
+
+  @@index([classroomId])
+  @@index([lessonId])
+  @@map("classroom_puzzles")
+}
+
+// ─── Classroom Custom Lessons ───────────────────────────────────────────────
+
+model ClassroomLesson {
+  id          Int      @id @default(autoincrement())
+  classroomId Int      @map("classroom_id")
+  title       String
+  content     String   @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  classroom Classroom        @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  puzzles   ClassroomPuzzle[]
+
+  @@index([classroomId])
+  @@map("classroom_lessons")
+}
+
+model ClassroomPuzzleSubmission {
+  id            Int       @id @default(autoincrement())
+  puzzleId      Int       @map("puzzle_id")
+  userId        Int       @map("user_id")
+  notation      String    @db.Text
+  notes         String?   @db.Text
+  submittedAt   DateTime  @default(now()) @map("submitted_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  reviewedAt    DateTime? @map("reviewed_at")
+  isCorrect     Boolean?  @map("is_correct")
+  coachFeedback String?   @db.Text @map("coach_feedback")
+
+  puzzle ClassroomPuzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([puzzleId, userId])
+  @@index([puzzleId])
+  @@map("classroom_puzzle_submissions")
+}
+
+// ─── Comments & Ratings ─────────────────────────────────────────────────────
+
+model LessonRating {
+  id       Int    @id @default(autoincrement())
+  userId   Int    @map("user_id")
+  lessonId Int    @map("lesson_id")
+  value    Int
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_ratings")
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  lessonId  Int      @map("lesson_id")
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId])
+  @@map("comments")
 }

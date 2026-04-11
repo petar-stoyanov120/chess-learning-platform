@@ -41,14 +41,14 @@ export default async function LevelPage({ params }: { params: { category: string
       ]} />
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-chess-dark capitalize">
+        <h1 className="text-3xl font-bold text-chess-dark dark:text-gray-100 capitalize">
           {category.name} — {level.name}
         </h1>
-        <p className="text-gray-500 mt-2">{lessons.length} lesson{lessons.length !== 1 ? 's' : ''}</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">{lessons.length} lesson{lessons.length !== 1 ? 's' : ''}</p>
       </div>
 
       {lessons.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-400 dark:text-gray-500">
           <div className="text-5xl mb-4">📭</div>
           <p className="text-lg">No lessons yet in this section. Check back soon!</p>
         </div>

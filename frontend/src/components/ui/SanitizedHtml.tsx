@@ -14,8 +14,10 @@ export default function SanitizedHtml({ html, className, as: Tag = 'div' }: Sani
     // Client-side hydration will re-run this with the real DOMPurify.
     if (typeof window === 'undefined') return html;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const DOMPurify = require('dompurify') as typeof import('dompurify');
-    const purify = typeof DOMPurify.sanitize === 'function' ? DOMPurify : (DOMPurify as unknown as { default: typeof DOMPurify }).default;
+    const raw = require('dompurify');
+    // Handle both ESM default export and CJS module shapes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const purify: { sanitize: (html: string, cfg?: Record<string, unknown>) => string } = typeof (raw as any).sanitize === 'function' ? raw : (raw as any).default;
     return purify.sanitize(html, {
       ADD_TAGS: ['iframe'],
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target'],

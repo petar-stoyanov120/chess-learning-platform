@@ -9,16 +9,16 @@ export interface BreadcrumbItem {
 
 export default function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="flex gap-2 text-sm text-gray-400 mb-6 flex-wrap">
+    <nav aria-label="Breadcrumb" className="flex gap-2 text-sm text-gray-400 dark:text-gray-500 mb-6 flex-wrap">
       {items.map((item, i) => (
         <Fragment key={i}>
           {i > 0 && <span>/</span>}
           {item.href ? (
-            <Link href={item.href} className={`hover:text-chess-gold${item.capitalize ? ' capitalize' : ''}`}>
+            <Link href={item.href} className={`hover:text-chess-gold dark:hover:text-chess-gold${item.capitalize ? ' capitalize' : ''}`}>
               {item.label}
             </Link>
           ) : (
-            <span className={`text-gray-600${item.capitalize ? ' capitalize' : ''}`}>{item.label}</span>
+            <span className={`text-gray-600 dark:text-gray-400${item.capitalize ? ' capitalize' : ''}`}>{item.label}</span>
           )}
         </Fragment>
       ))}

@@ -37,6 +37,8 @@ export async function listPublished(req: Request, res: Response, next: NextFunct
 export async function getBySlug(req: Request, res: Response, next: NextFunction) {
   try {
     const lesson = await lessonsService.getLessonBySlug(req.params.slug);
+    // Fire-and-forget view count increment (never blocks the response)
+    lessonsService.incrementViewCount(req.params.slug).catch(() => {});
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }
@@ -142,5 +144,22 @@ export async function getProgress(req: Request, res: Response, next: NextFunctio
   try {
     const progress = await progressService.getUserProgress(req.user!.id);
     sendSuccess(res, progress);
+  } catch (err) { next(err); }
+}
+
+export async function getLessonRating(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await lessonsService.getLessonRating(req.params.slug, req.user?.id);
+    sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+export async function rateLesson(req: Request, res: Response, next: NextFunction) {
+  try {
+    const schema = z.object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return next(new AppError(400, 'value must be 1, -1, or 0.'));
+    const result = await lessonsService.rateLesson(req.user!.id, req.params.slug, parsed.data.value);
+    sendSuccess(res, result);
   } catch (err) { next(err); }
 }

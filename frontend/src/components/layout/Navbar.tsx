@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/lib/theme';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Avatar from '@/components/ui/Avatar';
 
 export default function Navbar() {
   const { user, logout, isLoading } = useAuth();
+  const { theme, toggle } = useTheme();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -30,6 +32,22 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <Link href="/learn" className="hover:text-chess-cream transition-colors">Learn</Link>
             <Link href="/blog" className="hover:text-chess-cream transition-colors">Blog</Link>
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggle}
+              aria-label="Toggle dark mode"
+              className="p-1.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              {theme === 'dark' ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
             <Link href="/search" className="hover:text-chess-cream transition-colors" aria-label="Search">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -41,6 +59,7 @@ export default function Navbar() {
                 {user ? (
                   <div className="flex items-center gap-4">
                     <Link href="/library" className="hover:text-chess-cream transition-colors text-sm">My Library</Link>
+                    <Link href="/classrooms" className="hover:text-chess-cream transition-colors text-sm">Classrooms</Link>
                     <Link
                       href={user.role === 'admin' ? '/admin' : user.role === 'collaborator' ? '/collaborator' : '/dashboard'}
                       className="hover:text-chess-cream transition-colors text-sm"
@@ -93,9 +112,13 @@ export default function Navbar() {
             <Link href="/learn" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Learn</Link>
             <Link href="/blog" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Blog</Link>
             <Link href="/search" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Search</Link>
+            <button onClick={toggle} className="block px-2 py-2 text-gray-300 hover:text-white">
+              {theme === 'dark' ? '☀ Light Mode' : '🌙 Dark Mode'}
+            </button>
             {user ? (
               <>
                 <Link href="/library" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>My Library</Link>
+                <Link href="/classrooms" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Classrooms</Link>
                 <Link href="/profile" className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Profile</Link>
                 <Link href={user.role === 'admin' ? '/admin' : user.role === 'collaborator' ? '/collaborator' : '/dashboard'} className="block px-2 py-2 hover:text-chess-cream" onClick={() => setMenuOpen(false)}>Dashboard</Link>
                 <button onClick={handleLogout} className="block px-2 py-2 text-chess-gold">Logout</button>

@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface Stats {
   users: number;
+  classrooms: number;
   lessons: { total: number; published: number; pending: number; draft: number; rejected: number };
   posts: { total: number; published: number; pending: number; draft: number; rejected: number };
   totalPending: number;
@@ -76,8 +77,6 @@ export default function AdminPage() {
 
   if (loading) return <LoadingSpinner />;
 
-
-  // First 3 pending items (lessons first, then posts)
   const pendingPreview = pending
     ? [
         ...pending.lessons.slice(0, 3).map((l) => ({
@@ -101,17 +100,20 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-chess-dark mb-1">Admin Dashboard</h1>
-      <p className="text-gray-500 mb-8">Welcome back, @{user?.username}</p>
+      <h1 className="text-2xl font-bold text-chess-dark dark:text-gray-100 mb-1">Admin Dashboard</h1>
+      <p className="text-gray-500 dark:text-gray-400 mb-8">Welcome back, @{user?.username}</p>
 
       {/* Pending alert */}
       {stats && stats.totalPending > 0 && (
-        <Link href="/admin/approvals" className="block bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 hover:bg-amber-100 transition-colors">
+        <Link
+          href="/admin/approvals"
+          className="block bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🔔</span>
             <div>
-              <p className="font-semibold text-amber-800">{stats.totalPending} submission{stats.totalPending !== 1 ? 's' : ''} waiting for review</p>
-              <p className="text-sm text-amber-600">Click to review and approve</p>
+              <p className="font-semibold text-amber-800 dark:text-amber-200">{stats.totalPending} submission{stats.totalPending !== 1 ? 's' : ''} waiting for review</p>
+              <p className="text-sm text-amber-600 dark:text-amber-300">Click to review and approve</p>
             </div>
           </div>
         </Link>
@@ -119,12 +121,13 @@ export default function AdminPage() {
 
       {/* Stats cards */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {[
-            { label: 'Total Users', value: stats.users, icon: '👥', color: 'bg-blue-50 text-blue-700', href: '/admin/users' },
-            { label: 'Published Lessons', value: stats.lessons.published, icon: '📚', color: 'bg-green-50 text-green-700', href: '/admin/lessons' },
-            { label: 'Published Posts', value: stats.posts.published, icon: '✍️', color: 'bg-purple-50 text-purple-700', href: '/admin/blog' },
-            { label: 'Pending Review', value: stats.totalPending, icon: '⏳', color: 'bg-amber-50 text-amber-700', href: '/admin/approvals' },
+            { label: 'Total Users', value: stats.users, icon: '👥', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300', href: '/admin/users' },
+            { label: 'Published Lessons', value: stats.lessons.published, icon: '📚', color: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', href: '/admin/lessons' },
+            { label: 'Published Posts', value: stats.posts.published, icon: '✍️', color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300', href: '/admin/blog' },
+            { label: 'Classrooms', value: stats.classrooms ?? 0, icon: '🏫', color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300', href: '/admin/classrooms' },
+            { label: 'Pending Review', value: stats.totalPending, icon: '⏳', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300', href: '/admin/approvals' },
           ].map((card) => (
             <Link key={card.label} href={card.href} className={`${card.color} rounded-xl p-5 hover:opacity-90 transition-opacity`}>
               <div className="text-3xl mb-2">{card.icon}</div>
@@ -139,22 +142,22 @@ export default function AdminPage() {
         {/* Pending approvals preview */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Pending Approvals</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">Pending Approvals</h2>
             <Link href="/admin/approvals" className="text-sm text-chess-gold hover:underline">View all →</Link>
           </div>
           {pendingPreview.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4 text-center">No pending submissions</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 py-4 text-center">No pending submissions</p>
           ) : (
             <div className="space-y-3">
               {pendingPreview.map((item) => (
                 <div key={`${item.type}-${item.id}`} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
-                    <p className="text-xs text-gray-400">@{item.author} · {item.meta}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{item.title}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">@{item.author} · {item.meta}</p>
                   </div>
                   <Link
                     href="/admin/approvals"
-                    className="flex-shrink-0 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded hover:bg-amber-200"
+                    className="flex-shrink-0 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-2 py-1 rounded hover:bg-amber-200 dark:hover:bg-amber-900/60"
                   >
                     Review
                   </Link>
@@ -166,13 +169,13 @@ export default function AdminPage() {
 
         {/* Content breakdown */}
         <div className="card p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Content Overview</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Content Overview</h2>
           {stats && (
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-600">Lessons</span>
-                  <span className="text-gray-400">{stats.lessons.total} total</span>
+                  <span className="text-gray-600 dark:text-gray-400">Lessons</span>
+                  <span className="text-gray-400 dark:text-gray-500">{stats.lessons.total} total</span>
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
                   <span className="badge badge-published text-xs px-2 py-0.5">{stats.lessons.published} published</span>
@@ -183,8 +186,8 @@ export default function AdminPage() {
               </div>
               <div>
                 <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-600">Blog Posts</span>
-                  <span className="text-gray-400">{stats.posts.total} total</span>
+                  <span className="text-gray-600 dark:text-gray-400">Blog Posts</span>
+                  <span className="text-gray-400 dark:text-gray-500">{stats.posts.total} total</span>
                 </div>
                 <div className="flex gap-1.5 flex-wrap">
                   <span className="badge badge-published text-xs px-2 py-0.5">{stats.posts.published} published</span>
@@ -202,19 +205,25 @@ export default function AdminPage() {
       {recentUsers.length > 0 && (
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Recent Users</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-gray-100">Recent Users</h2>
             <Link href="/admin/users" className="text-sm text-chess-gold hover:underline">View all →</Link>
           </div>
           <div className="space-y-2">
             {recentUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
                 <div>
-                  <span className="text-sm font-medium text-gray-900">@{u.username}</span>
-                  <span className="text-xs text-gray-400 ml-2">{u.email}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">@{u.username}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">{u.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${u.role.name === 'admin' ? 'bg-purple-100 text-purple-800' : u.role.name === 'collaborator' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>{u.role.name}</span>
-                  <span className="text-xs text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    u.role.name === 'admin'
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300'
+                      : u.role.name === 'collaborator'
+                      ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}>{u.role.name}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
             ))}
@@ -227,22 +236,22 @@ export default function AdminPage() {
         <Link href="/admin/lessons/new" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
           <span className="text-3xl">➕</span>
           <div>
-            <h3 className="font-semibold text-gray-900">Create Lesson</h3>
-            <p className="text-sm text-gray-500">Write a new chess lesson</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Create Lesson</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Write a new chess lesson</p>
           </div>
         </Link>
         <Link href="/admin/approvals" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
           <span className="text-3xl">✅</span>
           <div>
-            <h3 className="font-semibold text-gray-900">Review Submissions</h3>
-            <p className="text-sm text-gray-500">Approve or reject content</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Review Submissions</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Approve or reject content</p>
           </div>
         </Link>
         <Link href="/admin/users" className="card p-6 hover:shadow-md transition-shadow flex items-center gap-4">
           <span className="text-3xl">👥</span>
           <div>
-            <h3 className="font-semibold text-gray-900">Manage Users</h3>
-            <p className="text-sm text-gray-500">View and manage accounts</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Manage Users</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">View and manage accounts</p>
           </div>
         </Link>
       </div>

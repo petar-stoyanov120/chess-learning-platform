@@ -14,6 +14,7 @@ const lessonSelect = {
   excerpt: true,
   coverImageUrl: true,
   readingTime: true,
+  viewCount: true,
   sortOrder: true,
   approvedAt: true,
   rejectionReason: true,
@@ -274,4 +275,42 @@ export async function listMyLessons(authorId: number, query: Record<string, stri
 
 export async function reorderLesson(id: number, sortOrder: number) {
   return prisma.lesson.update({ where: { id }, data: { sortOrder }, select: { id: true, sortOrder: true } });
+}
+
+export async function incrementViewCount(slug: string): Promise<void> {
+  await prisma.lesson.update({
+    where: { slug },
+    data: { viewCount: { increment: 1 } },
+  });
+}
+
+export async function getLessonRating(slug: string, userId?: number) {
+  const lesson = await prisma.lesson.findUnique({ where: { slug }, select: { id: true } });
+  if (!lesson) throw new AppError(404, 'Lesson not found.');
+
+  const [likes, dislikes, userRating] = await Promise.all([
+    prisma.lessonRating.count({ where: { lessonId: lesson.id, value: 1 } }),
+    prisma.lessonRating.count({ where: { lessonId: lesson.id, value: -1 } }),
+    userId
+      ? prisma.lessonRating.findUnique({ where: { userId_lessonId: { userId, lessonId: lesson.id } }, select: { value: true } })
+      : null,
+  ]);
+
+  return { likes, dislikes, userVote: (userRating?.value ?? 0) as 0 | 1 | -1 };
+}
+
+export async function rateLesson(userId: number, slug: string, value: 1 | -1 | 0) {
+  const lesson = await prisma.lesson.findUnique({ where: { slug }, select: { id: true } });
+  if (!lesson) throw new AppError(404, 'Lesson not found.');
+
+  if (value === 0) {
+    await prisma.lessonRating.deleteMany({ where: { userId, lessonId: lesson.id } });
+    return { removed: true };
+  }
+
+  return prisma.lessonRating.upsert({
+    where: { userId_lessonId: { userId, lessonId: lesson.id } },
+    create: { userId, lessonId: lesson.id, value },
+    update: { value },
+  });
 }

@@ -15,6 +15,8 @@ interface ToastContextValue {
   error: (message: string, options?: { duration?: number }) => void;
   info: (message: string, options?: { duration?: number }) => void;
   warning: (message: string, options?: { duration?: number }) => void;
+  // Shorthand for components that use showToast(message, type) pattern
+  showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -44,6 +46,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       error: (msg, opts) => addToast(msg, 'error', opts?.duration ?? 5000),
       info: (msg, opts) => addToast(msg, 'info', opts?.duration ?? 4000),
       warning: (msg, opts) => addToast(msg, 'warning', opts?.duration ?? 4000),
+      showToast: (msg, type) => addToast(msg, type, type === 'error' ? 5000 : 3000),
     }),
     [addToast]
   );

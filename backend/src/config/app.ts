@@ -24,6 +24,10 @@ import searchRoutes from '../modules/search/search.routes';
 import profileRoutes from '../modules/profile/profile.routes';
 import bookmarkRoutes from '../modules/bookmarks/bookmarks.routes';
 import playlistRoutes from '../modules/playlists/playlists.routes';
+import classroomRoutes from '../modules/classrooms/classrooms.routes';
+import commentRoutes from '../modules/comments/comments.routes';
+import locationRoutes from '../modules/locations/locations.routes';
+import clubAdminRoutes from '../modules/club-admin/club-admin.routes';
 
 export function createApp(): Express {
   const app = express();
@@ -98,6 +102,10 @@ export function createApp(): Express {
   app.use('/api/v1/profile', profileRoutes);
   app.use('/api/v1/bookmarks', bookmarkRoutes);
   app.use('/api/v1/playlists', playlistRoutes);
+  app.use('/api/v1/classrooms', classroomRoutes);
+  app.use('/api/v1/comments', commentRoutes);
+  app.use('/api/v1/locations', locationRoutes);
+  app.use('/api/v1/club-admin', clubAdminRoutes);
 
   // Daily post limit status
   app.get('/api/v1/daily-limit', authenticate, async (req, res, next) => {

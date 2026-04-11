@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   username: string;
   role: string;
+  clubId: number | null;
   tokenVersion: number;
 }
 
@@ -18,6 +19,26 @@ declare global {
       user?: AuthUser;
     }
   }
+}
+
+// Sets req.user if a valid token is present, but never returns 401 — for public routes that behave differently when authenticated.
+export async function optionalAuthenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+  const token = authHeader.slice(7);
+  try {
+    const payload = jwt.verify(token, jwtConfig.accessSecret) as AuthUser;
+    const dbUser = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { tokenVersion: true, isActive: true },
+    });
+    if (dbUser && dbUser.isActive && dbUser.tokenVersion === payload.tokenVersion) {
+      req.user = payload;
+    }
+  } catch {
+    // ignore invalid tokens — treat as unauthenticated
+  }
+  next();
 }
 
 export async function authenticate(req: Request, _res: Response, next: NextFunction): Promise<void> {
