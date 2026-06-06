@@ -29,6 +29,7 @@ model User {
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
   tokenVersion        Int       @default(0) @map("token_version")
+  deletedAt           DateTime? @map("deleted_at")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
@@ -36,22 +37,16 @@ model User {
   club                     Club?                       @relation(fields: [clubId], references: [id], onDelete: SetNull)
   refreshTokens            RefreshToken[]
   lessons                  Lesson[]                    @relation("LessonAuthor")
-  approvedLessons          Lesson[]                    @relation("LessonApprover")
-  blogPosts                BlogPost[]                  @relation("BlogAuthor")
-  approvedPosts            BlogPost[]                  @relation("BlogApprover")
   lessonProgress           LessonProgress[]
-  bookmarks                Bookmark[]
-  playlists                Playlist[]
   ownedClassrooms          Classroom[]                 @relation("ClassroomOwner")
   classroomMembers         ClassroomMember[]
   puzzleSubmissions        ClassroomPuzzleSubmission[]
-  lessonRatings            LessonRating[]
-  comments                 Comment[]
   locationCoaches          LocationCoach[]
   locationNoticesAuthored  LocationNotice[]            @relation("NoticeAuthor")
   locationNoticesReviewed  LocationNotice[]            @relation("NoticeReviewer")
 
   @@index([clubId])
+  @@index([deletedAt])
   @@map("users")
 }
 
@@ -90,55 +85,31 @@ model DifficultyLevel {
   @@map("difficulty_levels")
 }
 
-model PostStatus {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-
-  lessons   Lesson[]
-  blogPosts BlogPost[]
-
-  @@map("post_statuses")
-}
-
 model Lesson {
   id                Int      @id @default(autoincrement())
   title             String
-  slug              String   @unique
   content           String
   excerpt           String?
   authorId          Int      @map("author_id")
   categoryId        Int      @map("category_id")
   difficultyLevelId Int      @map("difficulty_level_id")
-  statusId          Int      @map("status_id")
-  coverImageUrl     String?  @map("cover_image_url")
+  status            String   @default("draft") // "draft" | "ready"
   sortOrder         Int      @default(0) @map("sort_order")
-  viewCount         Int      @default(0) @map("view_count")
-  approvedBy        Int?     @map("approved_by")
-  approvedAt        DateTime? @map("approved_at")
-  rejectionReason   String?  @map("rejection_reason")
-  readingTime       Int?     @map("reading_time")
-  metaDescription   String?  @map("meta_description")
+  deletedAt         DateTime? @map("deleted_at")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  author               User                      @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  approver             User?                     @relation("LessonApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  category             Category                  @relation(fields: [categoryId], references: [id])
-  level                DifficultyLevel           @relation(fields: [difficultyLevelId], references: [id])
-  status               PostStatus                @relation(fields: [statusId], references: [id])
-  diagrams             LessonDiagram[]
-  lessonTags           LessonTag[]
-  lessonProgress       LessonProgress[]
-  variations           Variation[]
-  bookmarks            Bookmark[]
-  playlistLessons      PlaylistLesson[]
-  classroomLessons     ClassroomPlaylistLesson[]
-  lessonRatings        LessonRating[]
-  comments             Comment[]
+  author           User                      @relation("LessonAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  category         Category                  @relation(fields: [categoryId], references: [id])
+  level            DifficultyLevel           @relation(fields: [difficultyLevelId], references: [id])
+  diagrams         LessonDiagram[]
+  lessonProgress   LessonProgress[]
+  variations       Variation[]
+  classroomLessons ClassroomPlaylistLesson[]
 
-  @@index([statusId])
   @@index([authorId])
-  @@index([categoryId, difficultyLevelId, statusId])
+  @@index([categoryId, difficultyLevelId, status])
+  @@index([deletedAt])
   @@map("lessons")
 }
 
@@ -168,123 +139,18 @@ model LessonDiagram {
   @@map("lesson_diagrams")
 }
 
-model BlogPost {
-  id              Int      @id @default(autoincrement())
-  title           String
-  slug            String   @unique
-  content         String
-  excerpt         String?
-  authorId        Int      @map("author_id")
-  statusId        Int      @map("status_id")
-  coverImageUrl   String?  @map("cover_image_url")
-  approvedBy      Int?     @map("approved_by")
-  approvedAt      DateTime? @map("approved_at")
-  rejectionReason String?  @map("rejection_reason")
-  readingTime     Int?     @map("reading_time")
-  metaDescription String?  @map("meta_description")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  author       User          @relation("BlogAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  approver     User?         @relation("BlogApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  status       PostStatus    @relation(fields: [statusId], references: [id])
-  blogPostTags BlogPostTag[]
-  variations   Variation[]
-
-  @@index([statusId])
-  @@index([authorId])
-  @@map("blog_posts")
-}
-
 model Variation {
-  id         Int       @id @default(autoincrement())
-  name       String
-  notation   String
-  sortOrder  Int       @default(0) @map("sort_order")
-  lessonId   Int?      @map("lesson_id")
-  blogPostId Int?      @map("blog_post_id")
-  createdAt  DateTime  @default(now()) @map("created_at")
-
-  lesson   Lesson?   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  blogPost BlogPost? @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
-
-  @@index([lessonId])
-  @@index([blogPostId])
-  @@map("variations")
-}
-
-model Tag {
-  id           Int           @id @default(autoincrement())
-  name         String        @unique
-  slug         String        @unique
-  lessonTags   LessonTag[]
-  blogPostTags BlogPostTag[]
-
-  @@map("tags")
-}
-
-model LessonTag {
-  lessonId Int @map("lesson_id")
-  tagId    Int @map("tag_id")
-
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([lessonId, tagId])
-  @@map("lesson_tags")
-}
-
-model BlogPostTag {
-  blogPostId Int @map("blog_post_id")
-  tagId      Int @map("tag_id")
-
-  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
-  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([blogPostId, tagId])
-  @@map("blog_post_tags")
-}
-
-model Bookmark {
   id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
+  name      String
+  notation  String
+  sortOrder Int      @default(0) @map("sort_order")
   lessonId  Int      @map("lesson_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, lessonId])
-  @@map("bookmarks")
-}
-
-model Playlist {
-  id          Int              @id @default(autoincrement())
-  userId      Int              @map("user_id")
-  name        String
-  description String?
-  isPublic    Boolean          @default(false) @map("is_public")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessons PlaylistLesson[]
-
-  @@map("playlists")
-}
-
-model PlaylistLesson {
-  id         Int      @id @default(autoincrement())
-  playlistId Int      @map("playlist_id")
-  lessonId   Int      @map("lesson_id")
-  addedAt    DateTime @default(now()) @map("added_at")
-  sortOrder  Int      @default(0) @map("sort_order")
-
-  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  lesson   Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([playlistId, lessonId])
-  @@map("playlist_lessons")
+  @@index([lessonId])
+  @@map("variations")
 }
 
 // ─── Clubs, Locations & Location Notices ────────────────────────────────────
@@ -376,7 +242,7 @@ model Classroom {
   ageMin      Int?     @map("age_min")
   ageMax      Int?     @map("age_max")
   isActive    Boolean  @default(true) @map("is_active")
-  tier        String   @default("free")
+  deletedAt   DateTime? @map("deleted_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -389,6 +255,7 @@ model Classroom {
 
   @@index([ownerId])
   @@index([locationId])
+  @@index([deletedAt])
   @@map("classrooms")
 }
 
@@ -499,32 +366,3 @@ model ClassroomPuzzleSubmission {
   @@map("classroom_puzzle_submissions")
 }
 
-// ─── Comments & Ratings ─────────────────────────────────────────────────────
-
-model LessonRating {
-  id       Int    @id @default(autoincrement())
-  userId   Int    @map("user_id")
-  lessonId Int    @map("lesson_id")
-  value    Int
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, lessonId])
-  @@map("lesson_ratings")
-}
-
-model Comment {
-  id        Int      @id @default(autoincrement())
-  lessonId  Int      @map("lesson_id")
-  userId    Int      @map("user_id")
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([lessonId])
-  @@map("comments")
-}

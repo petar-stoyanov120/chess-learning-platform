@@ -97,7 +97,7 @@ export default function MyClassroomsPage() {
             >
               Join with Invite Code
             </Link>
-            {(user?.role === 'collaborator' || user?.role === 'admin') && (
+            {(user?.role === 'coach' || user?.role === 'club_admin' || user?.role === 'admin') && (
               <Link
                 href="/collaborator/classrooms/new"
                 className="border border-chess-dark text-chess-dark px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"

@@ -74,8 +74,8 @@ export default function AdminLessonsPage() {
                     <Badge variant={lesson.level.name as 'beginner' | 'intermediate' | 'advanced'}>{lesson.level.name}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={lesson.status.name === 'pending_review' ? 'pending' : lesson.status.name as 'published' | 'draft' | 'rejected'}>
-                      {lesson.status.name.replace('_', ' ')}
+                    <Badge variant={lesson.status === 'ready' ? 'published' : 'draft'}>
+                      {lesson.status}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">@{lesson.author.username}</td>

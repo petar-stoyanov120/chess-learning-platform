@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
-import { Category, DifficultyLevel, Tag } from '@/lib/types';
+import { Category, DifficultyLevel } from '@/lib/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { VariationInput } from '@/components/chess/VariationEditor';
 
@@ -23,7 +23,6 @@ export default function NewLessonPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [levels, setLevels] = useState<DifficultyLevel[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,7 +31,6 @@ export default function NewLessonPage() {
   const [excerpt, setExcerpt] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [levelId, setLevelId] = useState('');
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
   const [diagrams, setDiagrams] = useState<DiagramInput[]>([]);
   const [variations, setVariations] = useState<VariationInput[]>([]);
   const [publish, setPublish] = useState(false);
@@ -41,11 +39,9 @@ export default function NewLessonPage() {
     Promise.all([
       api.get<{ data: Category[] }>('/categories'),
       api.get<{ data: DifficultyLevel[] }>('/categories/difficulty-levels'),
-      api.get<{ data: Tag[] }>('/tags'),
-    ]).then(([cats, lvls, tgs]) => {
+    ]).then(([cats, lvls]) => {
       setCategories((cats as { data: Category[] }).data);
       setLevels((lvls as { data: DifficultyLevel[] }).data);
-      setTags((tgs as { data: Tag[] }).data);
     });
   }, []);
 
@@ -66,7 +62,6 @@ export default function NewLessonPage() {
         title, content, excerpt,
         categoryId: parseInt(categoryId),
         difficultyLevelId: parseInt(levelId),
-        tagIds: selectedTags,
         diagrams: diagrams.filter((d) => d.fen.trim()),
         variations: variations.filter((v) => v.name.trim() && v.notation.trim()),
       });
@@ -180,31 +175,6 @@ export default function NewLessonPage() {
 
         {/* Variations */}
         <VariationEditor variations={variations} onChange={setVariations} />
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="card p-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Tags</h3>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <button
-                  key={tag.id} type="button"
-                  onClick={() => setSelectedTags(selectedTags.includes(tag.id)
-                    ? selectedTags.filter((t) => t !== tag.id)
-                    : [...selectedTags, tag.id]
-                  )}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                    selectedTags.includes(tag.id)
-                      ? 'bg-chess-dark text-white border-chess-dark'
-                      : 'border-gray-300 text-gray-600 hover:border-chess-dark'
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">

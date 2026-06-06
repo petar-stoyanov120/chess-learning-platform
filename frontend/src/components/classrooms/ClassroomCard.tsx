@@ -39,13 +39,6 @@ export default function ClassroomCard({ classroom, role }: ClassroomCardProps) {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            classroom.tier === 'premium'
-              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-          }`}>
-            {classroom.tier === 'premium' ? '⭐ Premium' : 'Free'}
-          </span>
           {!classroom.isActive && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300 font-medium">Inactive</span>
           )}

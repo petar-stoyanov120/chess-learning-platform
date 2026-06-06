@@ -18,48 +18,37 @@ const createLessonSchema = z.object({
   excerpt: z.string().max(500).optional(),
   categoryId: z.number().int().positive('Invalid category.'),
   difficultyLevelId: z.number().int().positive('Invalid difficulty level.'),
-  coverImageUrl: z.string().url('Cover image must be a valid URL.').optional().or(z.literal('')),
-  metaDescription: z.string().max(300, 'Meta description must be at most 300 characters.').optional(),
-  tagIds: z.array(z.number().int().positive()).optional(),
   diagrams: z.array(diagramSchema).optional(),
   variations: z.array(variationSchema).optional(),
 });
 
 const updateLessonSchema = createLessonSchema.partial();
 
-export async function listPublished(req: Request, res: Response, next: NextFunction) {
+const setStatusSchema = z.object({ status: z.enum(['draft', 'ready']) });
+
+function parseId(value: string): number {
+  const id = parseInt(value, 10);
+  if (isNaN(id)) throw new AppError(400, 'Invalid lesson id.');
+  return id;
+}
+
+export async function listLessons(req: Request, res: Response, next: NextFunction) {
   try {
-    const { lessons, meta } = await lessonsService.listPublishedLessons(req.query as Record<string, string>);
+    const { lessons, meta } = await lessonsService.listLessons(req.query as Record<string, string>);
     sendPaginated(res, lessons, meta);
   } catch (err) { next(err); }
 }
 
-export async function getBySlug(req: Request, res: Response, next: NextFunction) {
+export async function getById(req: Request, res: Response, next: NextFunction) {
   try {
-    const lesson = await lessonsService.getLessonBySlug(req.params.slug);
-    // Fire-and-forget view count increment (never blocks the response)
-    lessonsService.incrementViewCount(req.params.slug).catch(() => {});
+    const lesson = await lessonsService.getLessonById(parseId(req.params.id));
     sendSuccess(res, lesson);
-  } catch (err) { next(err); }
-}
-
-export async function getByCategoryAndLevel(req: Request, res: Response, next: NextFunction) {
-  try {
-    const result = await lessonsService.getLessonsByCategoryAndLevel(req.params.categorySlug, req.params.levelName);
-    sendSuccess(res, result);
   } catch (err) { next(err); }
 }
 
 export async function getMyLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    const lesson = await lessonsService.getMyLessonById(parseInt(req.params.id), req.user!.id);
-    sendSuccess(res, lesson);
-  } catch (err) { next(err); }
-}
-
-export async function getAdminLesson(req: Request, res: Response, next: NextFunction) {
-  try {
-    const lesson = await lessonsService.getLessonById(parseInt(req.params.id));
+    const lesson = await lessonsService.getMyLessonById(parseId(req.params.id), req.user!.id);
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }
@@ -68,7 +57,7 @@ export async function createLesson(req: Request, res: Response, next: NextFuncti
   try {
     const result = createLessonSchema.safeParse(req.body);
     if (!result.success) return next(new AppError(400, result.error.errors[0].message));
-    const lesson = await lessonsService.createLesson(req.user!.id, req.user!.role, result.data);
+    const lesson = await lessonsService.createLesson(req.user!.id, result.data);
     sendSuccess(res, lesson, 201);
   } catch (err) { next(err); }
 }
@@ -77,45 +66,45 @@ export async function updateLesson(req: Request, res: Response, next: NextFuncti
   try {
     const result = updateLessonSchema.safeParse(req.body);
     if (!result.success) return next(new AppError(400, result.error.errors[0].message));
-    const lesson = await lessonsService.updateLesson(parseInt(req.params.id), req.user!.id, req.user!.role, result.data);
+    const lesson = await lessonsService.updateLesson(parseId(req.params.id), req.user!.id, req.user!.role, result.data);
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }
 
-export async function submitLesson(req: Request, res: Response, next: NextFunction) {
+export async function setStatus(req: Request, res: Response, next: NextFunction) {
   try {
-    const lesson = await lessonsService.submitLesson(parseInt(req.params.id), req.user!.id, req.user!.role);
-    sendSuccess(res, lesson);
-  } catch (err) { next(err); }
-}
-
-export async function approveLesson(req: Request, res: Response, next: NextFunction) {
-  try {
-    const lesson = await lessonsService.approveLesson(parseInt(req.params.id), req.user!.id);
-    sendSuccess(res, lesson);
-  } catch (err) { next(err); }
-}
-
-export async function rejectLesson(req: Request, res: Response, next: NextFunction) {
-  try {
-    const result = z.object({ reason: z.string().min(1, 'Rejection reason is required.').max(1000, 'Rejection reason must be at most 1000 characters.') }).safeParse(req.body);
+    const result = setStatusSchema.safeParse(req.body);
     if (!result.success) return next(new AppError(400, result.error.errors[0].message));
-    const lesson = await lessonsService.rejectLesson(parseInt(req.params.id), result.data.reason);
+    const lesson = await lessonsService.setLessonStatus(parseId(req.params.id), req.user!.id, req.user!.role, result.data.status);
     sendSuccess(res, lesson);
   } catch (err) { next(err); }
 }
 
 export async function deleteLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    await lessonsService.deleteLesson(parseInt(req.params.id));
+    await lessonsService.deleteLesson(parseId(req.params.id));
     sendSuccess(res, { message: 'Lesson deleted.' });
   } catch (err) { next(err); }
 }
 
-export async function listAllAdmin(req: Request, res: Response, next: NextFunction) {
+export async function listDeleted(req: Request, res: Response, next: NextFunction) {
   try {
-    const { lessons, meta } = await lessonsService.listAllLessons(req.query as Record<string, string>);
+    const { lessons, meta } = await lessonsService.listDeletedLessons(req.query as Record<string, string>);
     sendPaginated(res, lessons, meta);
+  } catch (err) { next(err); }
+}
+
+export async function restoreLesson(req: Request, res: Response, next: NextFunction) {
+  try {
+    const lesson = await lessonsService.restoreLesson(parseId(req.params.id));
+    sendSuccess(res, lesson);
+  } catch (err) { next(err); }
+}
+
+export async function hardDeleteLesson(req: Request, res: Response, next: NextFunction) {
+  try {
+    await lessonsService.hardDeleteLesson(parseId(req.params.id));
+    sendSuccess(res, { message: 'Lesson permanently deleted.' });
   } catch (err) { next(err); }
 }
 
@@ -128,14 +117,14 @@ export async function listMine(req: Request, res: Response, next: NextFunction) 
 
 export async function reorderLesson(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await lessonsService.reorderLesson(parseInt(req.params.id), req.body.sortOrder);
+    const result = await lessonsService.reorderLesson(parseId(req.params.id), req.body.sortOrder);
     sendSuccess(res, result);
   } catch (err) { next(err); }
 }
 
 export async function markProgress(req: Request, res: Response, next: NextFunction) {
   try {
-    await progressService.markLessonComplete(req.user!.id, req.params.slug);
+    await progressService.markLessonComplete(req.user!.id, parseId(req.params.id));
     sendSuccess(res, { message: 'Progress recorded.' });
   } catch (err) { next(err); }
 }
@@ -144,22 +133,5 @@ export async function getProgress(req: Request, res: Response, next: NextFunctio
   try {
     const progress = await progressService.getUserProgress(req.user!.id);
     sendSuccess(res, progress);
-  } catch (err) { next(err); }
-}
-
-export async function getLessonRating(req: Request, res: Response, next: NextFunction) {
-  try {
-    const result = await lessonsService.getLessonRating(req.params.slug, req.user?.id);
-    sendSuccess(res, result);
-  } catch (err) { next(err); }
-}
-
-export async function rateLesson(req: Request, res: Response, next: NextFunction) {
-  try {
-    const schema = z.object({ value: z.union([z.literal(1), z.literal(-1), z.literal(0)]) });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) return next(new AppError(400, 'value must be 1, -1, or 0.'));
-    const result = await lessonsService.rateLesson(req.user!.id, req.params.slug, parsed.data.value);
-    sendSuccess(res, result);
   } catch (err) { next(err); }
 }

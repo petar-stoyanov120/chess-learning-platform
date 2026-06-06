@@ -29,7 +29,7 @@ export default function PuzzleSubmissionForm({ classroomId, puzzleId, existingSu
     }
     setLoading(true);
     try {
-      const res = await api.post<ClassroomPuzzleSubmission>(
+      const res = await api.post<{ data: ClassroomPuzzleSubmission }>(
         `/classrooms/${classroomId}/puzzles/${puzzleId}/submit`,
         { notation: notation.trim(), notes: notes.trim() || undefined },
       );

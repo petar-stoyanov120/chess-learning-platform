@@ -8,10 +8,12 @@ const router: Router = Router();
 router.use(authenticate, authorize('admin'));
 
 router.get('/', controller.listUsers);
+router.get('/deleted', controller.listDeleted);
 router.get('/:id', controller.getUser);
 router.patch('/:id/role', controller.updateRole);
 router.patch('/:id/status', controller.updateStatus);
 router.patch('/:id/unlock', controller.unlockUser);
 router.delete('/:id', controller.deleteUser);
+router.delete('/:id/hard', controller.hardDeleteUser);
 
 export default router;

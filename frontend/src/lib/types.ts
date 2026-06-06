@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'club_admin' | 'collaborator' | 'coach' | 'user';
+export type UserRole = 'admin' | 'club_admin' | 'coach' | 'user';
 
 export interface Role {
   name: UserRole;
@@ -28,7 +28,7 @@ export interface User {
   role: Role;
   clubId?: number | null;
   club?: { id: number; name: string } | null;
-  _count?: { bookmarks: number; playlists: number; lessonProgress: number };
+  _count?: { lessonProgress: number };
 }
 
 export interface AuthUser {
@@ -109,16 +109,7 @@ export interface DifficultyLevel {
   sortOrder: number;
 }
 
-export interface Tag {
-  id: number;
-  name: string;
-  slug: string;
-}
-
-export interface PostStatus {
-  id: number;
-  name: 'draft' | 'pending_review' | 'published' | 'rejected';
-}
+export type LessonStatus = 'draft' | 'ready';
 
 export interface LessonDiagram {
   id: number;
@@ -137,53 +128,20 @@ export interface Variation {
 export interface LessonSummary {
   id: number;
   title: string;
-  slug: string;
   excerpt?: string;
-  coverImageUrl?: string;
-  readingTime?: number;
-  viewCount?: number;
   sortOrder: number;
-  approvedAt?: string;
-  rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
   author: { id: number; username: string };
   category: { id: number; name: string; slug: string };
   level: { id: number; name: string; sortOrder: number };
-  status: PostStatus;
-  lessonTags: { tag: Tag }[];
+  status: LessonStatus;
   diagrams: LessonDiagram[];
   variations: Variation[];
 }
 
 export interface Lesson extends LessonSummary {
   content: string;
-  metaDescription?: string;
-  rejectionReason?: string;
-  readingTime?: number;
-}
-
-export interface BlogPostSummary {
-  id: number;
-  title: string;
-  slug: string;
-  excerpt?: string;
-  coverImageUrl?: string;
-  readingTime?: number;
-  approvedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  author: { id: number; username: string };
-  status: PostStatus;
-  blogPostTags: { tag: Tag }[];
-  rejectionReason?: string;
-  variations: Variation[];
-}
-
-export interface BlogPost extends BlogPostSummary {
-  content: string;
-  metaDescription?: string;
-  readingTime?: number;
 }
 
 export interface PaginationMeta {
@@ -202,30 +160,6 @@ export interface ApiResponse<T> {
 export interface PaginatedResponse<T> {
   data: T[];
   meta: PaginationMeta;
-}
-
-export interface Bookmark {
-  id: number;
-  lessonId: number;
-  createdAt: string;
-}
-
-export interface Playlist {
-  id: number;
-  name: string;
-  description: string | null;
-  isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { lessons: number };
-}
-
-export interface PlaylistLesson {
-  id: number;
-  playlistId: number;
-  lessonId: number;
-  addedAt: string;
-  sortOrder: number;
 }
 
 // ─── Classroom / Club System ──────────────────────────────────────────────────
@@ -247,7 +181,6 @@ export interface Classroom {
   ageMin?: number | null;
   ageMax?: number | null;
   isActive: boolean;
-  tier: 'free' | 'premium';
   createdAt: string;
   updatedAt: string;
   owner?: ClassroomOwner;
@@ -274,17 +207,14 @@ export interface ClassroomMember {
 export interface ClassroomPlaylistLesson {
   id: number;
   title: string;
-  slug: string;
   excerpt?: string;
-  coverImageUrl?: string;
-  readingTime?: number;
   sortOrder: number;
   teacherNote?: string | null;
   completed?: boolean;
   author: { id: number; username: string };
   category: { id: number; name: string; slug: string };
   level: { id: number; name: string; sortOrder: number };
-  status: PostStatus;
+  status: LessonStatus;
 }
 
 export interface ClassroomPlaylist {
@@ -342,6 +272,14 @@ export interface ClassroomLesson {
   _count?: { puzzles: number };
 }
 
+export interface Puzzle {
+  id: number;
+  fen: string;
+  sideToMove: 'white' | 'black';
+  solution: string[];
+  themes: string[];
+}
+
 export interface ClassroomPuzzleSubmission {
   id: number;
   puzzleId: number;
@@ -356,14 +294,3 @@ export interface ClassroomPuzzleSubmission {
   user?: { id: number; username: string; displayName?: string | null; avatarUrl?: string | null };
 }
 
-// ─── Comments & Ratings ───────────────────────────────────────────────────────
-
-export interface Comment {
-  id: number;
-  lessonId: number;
-  userId: number;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  user: { id: number; username: string; displayName?: string; avatarUrl?: string };
-}

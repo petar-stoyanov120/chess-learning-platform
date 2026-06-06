@@ -33,19 +33,19 @@ export default function StudentLessonPage() {
     if (!user) return;
     async function load() {
       try {
-        const res = await api.get<ClassroomLesson>(`/classrooms/${classroomId}/classroom-lessons/${lessonId}`);
+        const res = await api.get<{ data: ClassroomLesson }>(`/classrooms/${classroomId}/classroom-lessons/${lessonId}`);
         setLesson(res.data);
         // Load submissions for each puzzle in parallel
         if (res.data.puzzles && res.data.puzzles.length > 0) {
           const submissionResults = await Promise.allSettled(
             res.data.puzzles.map((pz: ClassroomPuzzle) =>
-              api.get<ClassroomPuzzleSubmission>(`/classrooms/${classroomId}/puzzles/${pz.id}/my-submission`)
+              api.get<{ data: ClassroomPuzzleSubmission }>(`/classrooms/${classroomId}/puzzles/${pz.id}/my-submission`)
                 .then((r) => ({ puzzleId: pz.id, submission: r.data }))
                 .catch(() => ({ puzzleId: pz.id, submission: null })),
             ),
           );
           const submMap: Record<number, ClassroomPuzzleSubmission | null> = {};
-          submissionResults.forEach((result) => {
+          submissionResults.forEach((result: PromiseSettledResult<{ puzzleId: number; submission: ClassroomPuzzleSubmission | null }>) => {
             if (result.status === 'fulfilled') {
               submMap[result.value.puzzleId] = result.value.submission;
             }

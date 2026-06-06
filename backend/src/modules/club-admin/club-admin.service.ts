@@ -12,7 +12,7 @@ export async function listClubCoaches(user: AuthUser) {
   if (!coachRole) return [];
 
   return prisma.user.findMany({
-    where: { clubId: user.clubId, roleId: coachRole.id },
+    where: { clubId: user.clubId, roleId: coachRole.id, deletedAt: null },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
@@ -39,13 +39,14 @@ export async function searchUsersForPromotion(user: AuthUser, query: string) {
   if (!user.clubId) throw new AppError(403, 'You must belong to a club to manage coaches.');
 
   const promotableRoles = await prisma.role.findMany({
-    where: { name: { in: ['user', 'collaborator'] } },
+    where: { name: { in: ['user'] } },
   });
   const roleIds = promotableRoles.map((r) => r.id);
 
   return prisma.user.findMany({
     where: {
       roleId: { in: roleIds },
+      deletedAt: null,
       OR: [
         { email: { contains: query, mode: 'insensitive' } },
         { username: { contains: query, mode: 'insensitive' } },
@@ -72,8 +73,8 @@ export async function searchUsersForPromotion(user: AuthUser, query: string) {
 export async function promoteToCoach(adminUser: AuthUser, targetUserId: number) {
   if (!adminUser.clubId) throw new AppError(403, 'You must belong to a club to manage coaches.');
 
-  const target = await prisma.user.findUnique({
-    where: { id: targetUserId },
+  const target = await prisma.user.findFirst({
+    where: { id: targetUserId, deletedAt: null },
     include: { role: true },
   });
   if (!target) throw new AppError(404, 'User not found.');
@@ -108,8 +109,8 @@ export async function promoteToCoach(adminUser: AuthUser, targetUserId: number) 
 export async function demoteCoach(adminUser: AuthUser, targetUserId: number) {
   if (!adminUser.clubId) throw new AppError(403, 'You must belong to a club to manage coaches.');
 
-  const target = await prisma.user.findUnique({
-    where: { id: targetUserId },
+  const target = await prisma.user.findFirst({
+    where: { id: targetUserId, deletedAt: null },
     include: { role: true },
   });
   if (!target) throw new AppError(404, 'User not found.');

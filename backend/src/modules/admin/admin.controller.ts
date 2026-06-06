@@ -20,7 +20,7 @@ const updateClubSchema = z.object({
 });
 
 const setRoleSchema = z.object({
-  role: z.enum(['admin', 'club_admin', 'collaborator', 'coach', 'user']),
+  role: z.enum(['admin', 'club_admin', 'coach', 'user']),
   clubId: z.number().int().positive().optional().nullable(),
 });
 
@@ -28,13 +28,6 @@ function parseId(val: string): number {
   const n = parseInt(val, 10);
   if (isNaN(n)) throw new AppError(400, 'Invalid ID.');
   return n;
-}
-
-export async function getPending(_req: Request, res: Response, next: NextFunction) {
-  try {
-    const data = await adminService.getPendingSubmissions();
-    sendSuccess(res, data);
-  } catch (err) { next(err); }
 }
 
 export async function getStats(_req: Request, res: Response, next: NextFunction) {

@@ -2,7 +2,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
 
 export async function updateProfile(userId: number, data: { displayName?: string }) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
   if (!user) throw new AppError(404, 'User not found.');
 
   return prisma.user.update({
@@ -17,7 +17,7 @@ export async function updateProfile(userId: number, data: { displayName?: string
       isActive: true,
       createdAt: true,
       role: { select: { name: true } },
-      _count: { select: { bookmarks: true, playlists: true, lessonProgress: true } },
+      _count: { select: { lessonProgress: true } },
     },
   });
 }

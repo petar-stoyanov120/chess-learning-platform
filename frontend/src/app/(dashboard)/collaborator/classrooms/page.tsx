@@ -69,10 +69,6 @@ export default function CollaboratorClassroomsPage() {
         </div>
       ) : (
         <>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
-            <strong>Free tier:</strong> Up to 3 classrooms, 5 playlists, and 30 students per classroom.
-            Contact us to upgrade to Premium for unlimited access.
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {classrooms.map((c) => (
               <ClassroomCard key={c.id} classroom={c} role="owner" />

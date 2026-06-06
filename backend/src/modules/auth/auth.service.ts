@@ -38,8 +38,8 @@ export async function register(email: string, username: string, password: string
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: { email, deletedAt: null },
     include: { role: true, club: { select: { id: true, name: true } } },
   });
 
@@ -109,7 +109,7 @@ export async function refresh(token: string) {
     throw new AppError(401, 'Invalid or expired refresh token.');
   }
 
-  if (!stored.user.isActive) throw new AppError(401, 'Account is deactivated.');
+  if (!stored.user.isActive || stored.user.deletedAt) throw new AppError(401, 'Account is deactivated.');
 
   const payload: AuthUser = {
     id: stored.user.id,
@@ -130,7 +130,7 @@ export async function logout(token: string) {
 }
 
 export async function changePassword(userId: number, oldPassword: string, newPassword: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
   if (!user) throw new AppError(404, 'User not found.');
 
   const valid = await bcrypt.compare(oldPassword, user.passwordHash);
@@ -149,8 +149,8 @@ export async function changePassword(userId: number, oldPassword: string, newPas
 }
 
 export async function getMe(userId: number) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+  const user = await prisma.user.findFirst({
+    where: { id: userId, deletedAt: null },
     select: {
       id: true,
       email: true,
@@ -160,7 +160,7 @@ export async function getMe(userId: number) {
       isActive: true,
       createdAt: true,
       role: { select: { name: true } },
-      _count: { select: { bookmarks: true, playlists: true, lessonProgress: true } },
+      _count: { select: { lessonProgress: true } },
     },
   });
   if (!user) throw new AppError(404, 'User not found.');

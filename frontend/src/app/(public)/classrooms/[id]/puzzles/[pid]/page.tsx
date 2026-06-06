@@ -33,8 +33,8 @@ export default function StudentPuzzlePage() {
     async function load() {
       try {
         const [pRes, sRes] = await Promise.all([
-          api.get<ClassroomPuzzle>(`/classrooms/${classroomId}/puzzles/${puzzleId}`),
-          api.get<ClassroomPuzzleSubmission | null>(`/classrooms/${classroomId}/puzzles/${puzzleId}/my-submission`),
+          api.get<{ data: ClassroomPuzzle }>(`/classrooms/${classroomId}/puzzles/${puzzleId}`),
+          api.get<{ data: ClassroomPuzzleSubmission | null }>(`/classrooms/${classroomId}/puzzles/${puzzleId}/my-submission`),
         ]);
         setPuzzle(pRes.data);
         setSubmission(sRes.data ?? null);
@@ -112,7 +112,7 @@ export default function StudentPuzzlePage() {
             </span>
           )}
         </div>
-        <ChessBoard fen={puzzle.fen} orientation={puzzle.sideToMove} size={400} />
+        <ChessBoard fen={puzzle.fen} orientation={puzzle.sideToMove as 'white' | 'black'} size={400} />
       </div>
 
       {/* Submission section */}

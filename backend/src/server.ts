@@ -5,6 +5,7 @@ import { createApp } from './config/app';
 import { prisma } from './config/database';
 import { loadStatusCache } from './config/statusCache';
 import { logger } from './config/logger';
+import { startJobs } from './jobs';
 
 async function ensureUploadDirs() {
   const uploadDir = path.resolve(config.uploadDir);
@@ -21,6 +22,8 @@ async function start() {
   await ensureUploadDirs();
   await loadStatusCache();
   logger.info('Status cache loaded');
+
+  startJobs();
 
   const app = createApp();
   app.listen(config.port, () => {

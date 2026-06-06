@@ -61,7 +61,7 @@ export default function ManageClassroomPage({ params }: { params: { id: string }
 
   const loadPuzzles = useCallback(async () => {
     try {
-      const res = await api.get<ClassroomPuzzle[]>(`/classrooms/${id}/puzzles`);
+      const res = await api.get<{ data: ClassroomPuzzle[] }>(`/classrooms/${id}/puzzles`);
       setPuzzles(res.data ?? []);
     } catch {
       // no-op
@@ -70,7 +70,7 @@ export default function ManageClassroomPage({ params }: { params: { id: string }
 
   const loadLessons = useCallback(async () => {
     try {
-      const res = await api.get<ClassroomLesson[]>(`/classrooms/${id}/classroom-lessons`);
+      const res = await api.get<{ data: ClassroomLesson[] }>(`/classrooms/${id}/classroom-lessons`);
       setLessons(res.data ?? []);
     } catch {
       // no-op
@@ -182,13 +182,6 @@ export default function ManageClassroomPage({ params }: { params: { id: string }
           </div>
           <div className="flex items-center gap-3 mt-1">
             <h1 className="text-2xl font-bold text-chess-dark dark:text-gray-100">{classroom.name}</h1>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-              classroom.tier === 'premium'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-            }`}>
-              {classroom.tier === 'premium' ? '⭐ Premium' : 'Free'}
-            </span>
             {!classroom.isActive && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300 font-medium">Inactive</span>
             )}
@@ -393,7 +386,6 @@ export default function ManageClassroomPage({ params }: { params: { id: string }
           <div className="flex justify-between items-center mb-4">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               {classroom._count?.members ?? 0} student{(classroom._count?.members ?? 0) !== 1 ? 's' : ''}
-              {classroom.tier === 'free' && ` (max 30 on free tier)`}
             </p>
           </div>
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
-import { useToast } from '@/lib/toast';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface AdminClassroom {
@@ -11,7 +10,6 @@ interface AdminClassroom {
   description?: string | null;
   inviteCode: string;
   isActive: boolean;
-  tier: 'free' | 'premium';
   createdAt: string;
   owner: { id: number; username: string; email: string };
   _count: { members: number; playlists: number };
@@ -26,7 +24,6 @@ interface ClassroomListData {
 }
 
 export default function AdminClassroomsPage() {
-  const { showToast } = useToast();
   const [data, setData] = useState<ClassroomListData | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -45,29 +42,13 @@ export default function AdminClassroomsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleSetTier(classroomId: number, tier: 'free' | 'premium') {
-    try {
-      await api.patch(`/admin/classrooms/${classroomId}/tier`, { tier });
-      setData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          classrooms: prev.classrooms.map((c) => c.id === classroomId ? { ...c, tier } : c),
-        };
-      });
-      showToast(`Classroom set to ${tier}.`, 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update tier', 'error');
-    }
-  }
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-chess-dark dark:text-gray-100">Classrooms</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            {data ? `${data.total} total classroom${data.total !== 1 ? 's' : ''}` : 'Manage all classrooms and tiers'}
+            {data ? `${data.total} total classroom${data.total !== 1 ? 's' : ''}` : 'Manage all classrooms'}
           </p>
         </div>
       </div>
@@ -89,9 +70,7 @@ export default function AdminClassroomsPage() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Owner</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Students</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Playlists</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Tier</th>
                   <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Status</th>
-                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -109,31 +88,12 @@ export default function AdminClassroomsPage() {
                     <td className="px-4 py-3 text-center text-gray-700 dark:text-gray-300">{c._count.playlists}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        c.tier === 'premium'
-                          ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        {c.tier === 'premium' ? '⭐ Premium' : 'Free'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         c.isActive
                           ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
                           : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300'
                       }`}>
                         {c.isActive ? 'Active' : 'Inactive'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <select
-                        value={c.tier}
-                        onChange={(e) => handleSetTier(c.id, e.target.value as 'free' | 'premium')}
-                        className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-chess-gold"
-                      >
-                        <option value="free">Free</option>
-                        <option value="premium">Premium</option>
-                      </select>
                     </td>
                   </tr>
                 ))}

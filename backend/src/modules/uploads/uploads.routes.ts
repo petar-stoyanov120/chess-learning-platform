@@ -6,6 +6,6 @@ import { uploadImage } from '../../middleware/upload';
 
 const router: Router = Router();
 
-router.post('/image', authenticate, authorize('collaborator', 'admin'), uploadImage, controller.uploadImage);
+router.post('/image', authenticate, authorize('admin', 'club_admin', 'coach'), uploadImage, controller.uploadImage);
 
 export default router;

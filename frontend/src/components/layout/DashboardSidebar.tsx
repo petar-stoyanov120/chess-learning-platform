@@ -15,9 +15,7 @@ const adminNav: NavItem[] = [
   { href: '/admin', label: 'Overview', icon: '📊' },
   { href: '/admin/approvals', label: 'Approvals', icon: '✅' },
   { href: '/admin/lessons', label: 'Lessons', icon: '📚' },
-  { href: '/admin/blog', label: 'Blog Posts', icon: '✍️' },
   { href: '/admin/classrooms', label: 'All Classrooms', icon: '🏫' },
-  { href: '/collaborator/classrooms', label: 'My Classrooms', icon: '🎓' },
   { href: '/admin/clubs', label: 'Clubs', icon: '♟' },
   { href: '/admin/categories', label: 'Categories', icon: '📂' },
   { href: '/admin/levels', label: 'Levels', icon: '📏' },
@@ -29,15 +27,6 @@ const clubAdminNav: NavItem[] = [
   { href: '/club-admin/coaches', label: 'Coaches', icon: '👥' },
   { href: '/collaborator/locations', label: 'Locations', icon: '📍' },
   { href: '/collaborator/classrooms', label: 'My Classrooms', icon: '🏫' },
-  { href: '/collaborator/lessons', label: 'My Lessons', icon: '📚' },
-  { href: '/collaborator/blog', label: 'My Blog Posts', icon: '✍️' },
-];
-
-const collaboratorNav: NavItem[] = [
-  { href: '/collaborator', label: 'Overview', icon: '📊' },
-  { href: '/collaborator/lessons', label: 'My Lessons', icon: '📚' },
-  { href: '/collaborator/blog', label: 'My Blog Posts', icon: '✍️' },
-  { href: '/collaborator/classrooms', label: 'My Classrooms', icon: '🏫' },
 ];
 
 const coachNav: NavItem[] = [
@@ -47,12 +36,11 @@ const coachNav: NavItem[] = [
 
 const userNav: NavItem[] = [
   { href: '/dashboard', label: 'My Dashboard', icon: '🏠' },
-  { href: '/library', label: 'My Library', icon: '🔖' },
   { href: '/classrooms', label: 'My Classrooms', icon: '🏫' },
   { href: '/profile', label: 'My Profile', icon: '👤' },
 ];
 
-const exactRoutes = ['/admin', '/collaborator', '/dashboard', '/club-admin'];
+const exactRoutes = ['/admin', '/dashboard', '/club-admin'];
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
@@ -62,12 +50,11 @@ export default function DashboardSidebar() {
   if (user?.role === 'admin') navItems = adminNav;
   else if (user?.role === 'club_admin') navItems = clubAdminNav;
   else if (user?.role === 'coach') navItems = coachNav;
-  else if (user?.role === 'collaborator') navItems = collaboratorNav;
   else navItems = userNav;
 
   const clubName = user?.club?.name ?? undefined;
   const roleLabel = user?.role
-    ? getRoleDisplayName(user.role as 'admin' | 'club_admin' | 'collaborator' | 'coach' | 'user', clubName)
+    ? getRoleDisplayName(user.role as 'admin' | 'club_admin' | 'coach' | 'user', clubName)
     : '';
 
   return (

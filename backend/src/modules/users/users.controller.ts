@@ -5,7 +5,7 @@ import { sendSuccess, sendPaginated } from '../../utils/apiResponse';
 import { AppError } from '../../middleware/errorHandler';
 
 const updateRoleSchema = z.object({
-  role: z.enum(['user', 'collaborator', 'admin'], { message: 'Role must be user, collaborator, or admin.' }),
+  role: z.enum(['user', 'admin'], { message: 'Role must be user or admin.' }),
 });
 
 const updateStatusSchema = z.object({
@@ -65,6 +65,24 @@ export async function deleteUser(req: Request, res: Response, next: NextFunction
   try {
     await usersService.deleteUser(parseInt(req.params.id));
     sendSuccess(res, { message: 'User deleted.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listDeleted(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { users, meta } = await usersService.listDeletedUsers(req.query as Record<string, string>);
+    sendPaginated(res, users, meta);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function hardDeleteUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    await usersService.hardDeleteUser(parseInt(req.params.id));
+    sendSuccess(res, { message: 'User permanently deleted.' });
   } catch (err) {
     next(err);
   }

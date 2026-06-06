@@ -8,13 +8,12 @@ const router: Router = Router();
 
 router.use(authenticate, authorize('admin'));
 
-router.get('/pending', controller.getPending);
 router.get('/stats', controller.getStats);
 router.get('/recent-users', controller.getRecentUsers);
 
 // ─── Classroom admin endpoints ────────────────────────────────────────────────
 router.get('/classrooms', classroomsCtrl.adminListClassrooms);
-router.patch('/classrooms/:id/tier', classroomsCtrl.adminSetTier);
+router.get('/classrooms/deleted', classroomsCtrl.adminListDeletedClassrooms);
 
 // ─── Club management ──────────────────────────────────────────────────────────
 router.get('/clubs', controller.listClubs);

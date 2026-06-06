@@ -267,7 +267,6 @@ export default function BoardSetupEditor({
             <Chessboard
               position={position}
               boardWidth={Math.min(size, 500)}
-              sparePieces={false}
               arePiecesDraggable={true}
               onPieceDrop={handlePieceDrop}
               onSquareRightClick={handleSquareRightClick}

@@ -1,5 +1,4 @@
 import { prisma } from '../../config/database';
-import { getStatusId } from '../../config/statusCache';
 import { AppError } from '../../middleware/errorHandler';
 
 // ─── Club management ──────────────────────────────────────────────────────────
@@ -56,7 +55,7 @@ export async function setUserRole(
   const role = await prisma.role.findUnique({ where: { name: roleName } });
   if (!role) throw new AppError(400, `Role '${roleName}' does not exist.`);
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
   if (!user) throw new AppError(404, 'User not found.');
 
   // Roles that require a clubId
@@ -65,7 +64,7 @@ export async function setUserRole(
     throw new AppError(400, `Role '${roleName}' requires a clubId to be specified.`);
   }
   // Roles that should clear clubId
-  const noClubRoles = ['admin', 'collaborator', 'user'];
+  const noClubRoles = ['admin', 'user'];
   const resolvedClubId = noClubRoles.includes(roleName) ? null : (clubId ?? null);
 
   // Validate club exists if provided
@@ -87,37 +86,9 @@ export async function setUserRole(
   });
 }
 
-export async function getPendingSubmissions() {
-  const pendingId = getStatusId('pending_review');
-
-  const [lessons, posts] = await Promise.all([
-    prisma.lesson.findMany({
-      where: { statusId: pendingId },
-      take: 50,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true, title: true, slug: true, createdAt: true,
-        author: { select: { id: true, username: true } },
-        category: { select: { name: true, slug: true } },
-        level: { select: { name: true } },
-      },
-    }),
-    prisma.blogPost.findMany({
-      where: { statusId: pendingId },
-      take: 50,
-      orderBy: { createdAt: 'asc' },
-      select: {
-        id: true, title: true, slug: true, createdAt: true,
-        author: { select: { id: true, username: true } },
-      },
-    }),
-  ]);
-
-  return { lessons, posts, total: lessons.length + posts.length };
-}
-
 export async function getRecentUsers(take = 5) {
   return prisma.user.findMany({
+    where: { deletedAt: null },
     take,
     orderBy: { createdAt: 'desc' },
     select: {
@@ -132,37 +103,18 @@ export async function getRecentUsers(take = 5) {
 }
 
 export async function getDashboardStats() {
-  const publishedId = getStatusId('published');
-  const pendingId = getStatusId('pending_review');
-  const draftId = getStatusId('draft');
-  const rejectedId = getStatusId('rejected');
-
   const [
     totalUsers,
     totalLessons,
-    publishedLessons,
-    pendingLessons,
     draftLessons,
-    rejectedLessons,
-    totalPosts,
-    publishedPosts,
-    pendingPosts,
-    draftPosts,
-    rejectedPosts,
+    readyLessons,
     totalClassrooms,
   ] = await Promise.all([
-    prisma.user.count(),
-    prisma.lesson.count(),
-    prisma.lesson.count({ where: { statusId: publishedId } }),
-    prisma.lesson.count({ where: { statusId: pendingId } }),
-    prisma.lesson.count({ where: { statusId: draftId } }),
-    prisma.lesson.count({ where: { statusId: rejectedId } }),
-    prisma.blogPost.count(),
-    prisma.blogPost.count({ where: { statusId: publishedId } }),
-    prisma.blogPost.count({ where: { statusId: pendingId } }),
-    prisma.blogPost.count({ where: { statusId: draftId } }),
-    prisma.blogPost.count({ where: { statusId: rejectedId } }),
-    prisma.classroom.count(),
+    prisma.user.count({ where: { deletedAt: null } }),
+    prisma.lesson.count({ where: { deletedAt: null } }),
+    prisma.lesson.count({ where: { status: 'draft', deletedAt: null } }),
+    prisma.lesson.count({ where: { status: 'ready', deletedAt: null } }),
+    prisma.classroom.count({ where: { deletedAt: null } }),
   ]);
 
   return {
@@ -170,18 +122,8 @@ export async function getDashboardStats() {
     classrooms: totalClassrooms,
     lessons: {
       total: totalLessons,
-      published: publishedLessons,
-      pending: pendingLessons,
       draft: draftLessons,
-      rejected: rejectedLessons,
+      ready: readyLessons,
     },
-    posts: {
-      total: totalPosts,
-      published: publishedPosts,
-      pending: pendingPosts,
-      draft: draftPosts,
-      rejected: rejectedPosts,
-    },
-    totalPending: pendingLessons + pendingPosts,
   };
 }

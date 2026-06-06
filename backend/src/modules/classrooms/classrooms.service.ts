@@ -1,24 +1,20 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
-import { getStatusId } from '../../config/statusCache';
-import { hasLocationAccess } from '../../utils/locationAccess';
-
-const FREE_MAX_CLASSROOMS = 3;
-const FREE_MAX_PLAYLISTS = 5;
-const FREE_MAX_STUDENTS = 30;
+import { can } from '../../policy';
+import { sanitize } from '../../utils/sanitizeHtml';
+import { requireClassroomAccess, requireClassroomOwner } from '../../policy/guards';
+import { userHasLocationAccess } from '../../policy/context';
+import { PolicyUser } from '../../policy/types';
 
 const lessonSelect = {
   id: true,
   title: true,
-  slug: true,
   excerpt: true,
-  coverImageUrl: true,
-  readingTime: true,
   createdAt: true,
   author: { select: { id: true, username: true } },
   category: { select: { id: true, name: true, slug: true } },
   level: { select: { id: true, name: true, sortOrder: true } },
-  status: { select: { id: true, name: true } },
+  status: true,
 };
 
 function generateInviteCode(): string {
@@ -39,26 +35,18 @@ async function generateUniqueCode(): Promise<string> {
   throw new AppError(500, 'Failed to generate unique invite code. Please try again.');
 }
 
+// Classroom owner/membership decisions are role-independent (see policy/can.ts),
+// so these thin wrappers pass a neutral PolicyUser carrying only the user id.
+const asUser = (userId: number): PolicyUser => ({ id: userId, role: 'user', clubId: null });
+
 /** Verify a user is the owner of a classroom, throws 403/404 otherwise. */
 async function requireOwner(classroomId: number, userId: number) {
-  const classroom = await prisma.classroom.findUnique({ where: { id: classroomId } });
-  if (!classroom) throw new AppError(404, 'Classroom not found.');
-  if (classroom.ownerId !== userId) throw new AppError(403, 'Only the classroom owner can perform this action.');
-  return classroom;
+  return requireClassroomOwner(prisma, classroomId, asUser(userId));
 }
 
 /** Verify a user is either the owner or an enrolled member, throws otherwise. */
 async function requireAccess(classroomId: number, userId: number) {
-  const classroom = await prisma.classroom.findUnique({
-    where: { id: classroomId },
-    include: { members: { where: { userId } } },
-  });
-  if (!classroom) throw new AppError(404, 'Classroom not found.');
-  if (!classroom.isActive) throw new AppError(403, 'This classroom is no longer active.');
-  if (classroom.ownerId !== userId && classroom.members.length === 0) {
-    throw new AppError(403, 'You are not a member of this classroom.');
-  }
-  return classroom;
+  return requireClassroomAccess(prisma, classroomId, asUser(userId));
 }
 
 // ─── Classroom CRUD ──────────────────────────────────────────────────────────
@@ -66,14 +54,14 @@ async function requireAccess(classroomId: number, userId: number) {
 export async function listMyClassrooms(userId: number) {
   const [owned, joined] = await Promise.all([
     prisma.classroom.findMany({
-      where: { ownerId: userId },
+      where: { ownerId: userId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { members: true, playlists: true } },
       },
     }),
     prisma.classroomMember.findMany({
-      where: { userId },
+      where: { userId, classroom: { deletedAt: null } },
       orderBy: { joinedAt: 'desc' },
       include: {
         classroom: {
@@ -90,8 +78,8 @@ export async function listMyClassrooms(userId: number) {
 
 export async function getClassroomById(classroomId: number, userId: number) {
   const classroom = await requireAccess(classroomId, userId);
-  const full = await prisma.classroom.findUnique({
-    where: { id: classroomId },
+  const full = await prisma.classroom.findFirst({
+    where: { id: classroomId, deletedAt: null },
     include: {
       owner: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       location: { select: { id: true, name: true } },
@@ -111,20 +99,13 @@ export async function createClassroom(
   data: { name: string; description?: string; locationId?: number; ageMin?: number; ageMax?: number },
 ) {
   if (owner.role === 'user') {
-    throw new AppError(403, 'Only collaborators and admins can create classrooms.');
-  }
-
-  if (owner.role !== 'admin') {
-    const count = await prisma.classroom.count({ where: { ownerId: owner.id } });
-    if (count >= FREE_MAX_CLASSROOMS) {
-      throw new AppError(400, `Free tier allows up to ${FREE_MAX_CLASSROOMS} classrooms. Upgrade to premium for unlimited classrooms.`);
-    }
+    throw new AppError(403, 'Only coaches and admins can create classrooms.');
   }
 
   // If locationId provided, verify the owner has access to that location
   if (data.locationId) {
-    const user = { id: owner.id, role: owner.role, clubId: owner.clubId ?? null } as any;
-    const access = await hasLocationAccess(prisma, data.locationId, user);
+    const user: PolicyUser = { id: owner.id, role: owner.role, clubId: owner.clubId ?? null };
+    const access = await userHasLocationAccess(prisma, data.locationId, user);
     if (!access) {
       throw new AppError(403, 'You do not have access to that location.');
     }
@@ -172,19 +153,43 @@ export async function updateClassroom(
   });
 }
 
+/** Soft delete: mark the classroom deleted so it (and its playlists/puzzles/members)
+ *  drops out of normal reads without destroying any of that nested content (audit M5). */
 export async function deleteClassroom(classroomId: number, userId: number, userRole: string) {
-  const classroom = await prisma.classroom.findUnique({ where: { id: classroomId } });
+  const classroom = await prisma.classroom.findFirst({ where: { id: classroomId, deletedAt: null } });
   if (!classroom) throw new AppError(404, 'Classroom not found.');
-  if (classroom.ownerId !== userId && userRole !== 'admin') {
+  const allowed = can(
+    { id: userId, role: userRole, clubId: null },
+    'delete',
+    { type: 'Classroom', isOwner: classroom.ownerId === userId, isMember: false, isActive: classroom.isActive },
+  );
+  if (!allowed) {
     throw new AppError(403, 'Only the classroom owner or an admin can delete this classroom.');
   }
+  await prisma.classroom.update({ where: { id: classroomId }, data: { deletedAt: new Date() } });
+}
+
+/** Admin-only: restore a soft-deleted classroom. */
+export async function restoreClassroom(classroomId: number) {
+  const classroom = await prisma.classroom.findFirst({ where: { id: classroomId, deletedAt: { not: null } } });
+  if (!classroom) throw new AppError(404, 'Deleted classroom not found.');
+  return prisma.classroom.update({ where: { id: classroomId }, data: { deletedAt: null } });
+}
+
+/** Admin-only: permanently remove a classroom (cascades to members, playlists,
+ *  puzzles, submissions, and classroom lessons). For genuine data removal. */
+export async function hardDeleteClassroom(classroomId: number) {
+  const classroom = await prisma.classroom.findUnique({ where: { id: classroomId } });
+  if (!classroom) throw new AppError(404, 'Classroom not found.');
   await prisma.classroom.delete({ where: { id: classroomId } });
 }
 
 // ─── Membership ───────────────────────────────────────────────────────────────
 
+const MAX_STUDENTS_PER_CLASSROOM = 200;
+
 export async function joinByCode(userId: number, inviteCode: string) {
-  const classroom = await prisma.classroom.findUnique({ where: { inviteCode: inviteCode.toUpperCase().trim() } });
+  const classroom = await prisma.classroom.findFirst({ where: { inviteCode: inviteCode.toUpperCase().trim(), deletedAt: null } });
   if (!classroom) throw new AppError(404, 'Invalid invite code. Please check and try again.');
   if (!classroom.isActive) throw new AppError(400, 'This classroom is no longer active.');
   if (classroom.ownerId === userId) {
@@ -196,12 +201,9 @@ export async function joinByCode(userId: number, inviteCode: string) {
   });
   if (existing) throw new AppError(400, 'You are already a member of this classroom.');
 
-  // Check free tier student limit
-  if (classroom.tier === 'free') {
-    const memberCount = await prisma.classroomMember.count({ where: { classroomId: classroom.id } });
-    if (memberCount >= FREE_MAX_STUDENTS) {
-      throw new AppError(400, 'This classroom has reached its student limit.');
-    }
+  const memberCount = await prisma.classroomMember.count({ where: { classroomId: classroom.id } });
+  if (memberCount >= MAX_STUDENTS_PER_CLASSROOM) {
+    throw new AppError(400, `This classroom is full (maximum ${MAX_STUDENTS_PER_CLASSROOM} students).`);
   }
 
   await prisma.classroomMember.create({ data: { classroomId: classroom.id, userId } });
@@ -225,7 +227,7 @@ export async function leaveClassroom(classroomId: number, userId: number) {
 export async function getMembers(classroomId: number, requesterId: number) {
   await requireOwner(classroomId, requesterId);
   return prisma.classroomMember.findMany({
-    where: { classroomId },
+    where: { classroomId, user: { deletedAt: null } },
     orderBy: { joinedAt: 'asc' },
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true, email: true } },
@@ -245,17 +247,18 @@ export async function removeMember(classroomId: number, ownerId: number, targetU
 export async function getProgress(classroomId: number, requesterId: number) {
   await requireOwner(classroomId, requesterId);
 
-  // Collect all lesson IDs from all playlists in this classroom
+  // Collect all lesson IDs from all playlists in this classroom (excluding
+  // soft-deleted lessons so they don't inflate the totals — audit M5).
   const playlists = await prisma.classroomPlaylist.findMany({
     where: { classroomId },
-    include: { lessons: { select: { lessonId: true } } },
+    include: { lessons: { where: { lesson: { deletedAt: null } }, select: { lessonId: true } } },
   });
   const lessonIds = [...new Set(playlists.flatMap((p) => p.lessons.map((l) => l.lessonId)))];
   const totalLessons = lessonIds.length;
 
-  // Get all members
+  // Get all members (excluding soft-deleted users)
   const members = await prisma.classroomMember.findMany({
-    where: { classroomId },
+    where: { classroomId, user: { deletedAt: null } },
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
     },
@@ -299,15 +302,8 @@ export async function listPlaylists(classroomId: number, requesterId: number) {
   });
 }
 
-export async function createPlaylist(classroomId: number, ownerId: number, ownerRole: string, data: { name: string; description?: string; teacherIntro?: string }) {
-  const classroom = await requireOwner(classroomId, ownerId);
-
-  if (classroom.tier === 'free' && ownerRole !== 'admin') {
-    const count = await prisma.classroomPlaylist.count({ where: { classroomId } });
-    if (count >= FREE_MAX_PLAYLISTS) {
-      throw new AppError(400, `Free tier allows up to ${FREE_MAX_PLAYLISTS} playlists per classroom. Upgrade to premium for unlimited playlists.`);
-    }
-  }
+export async function createPlaylist(classroomId: number, ownerId: number, data: { name: string; description?: string; teacherIntro?: string }) {
+  await requireOwner(classroomId, ownerId);
 
   const maxSort = await prisma.classroomPlaylist.aggregate({
     where: { classroomId },
@@ -356,6 +352,7 @@ export async function getPlaylist(classroomId: number, playlistId: number, reque
     where: { id: playlistId },
     include: {
       lessons: {
+        where: { lesson: { deletedAt: null } },
         orderBy: { sortOrder: 'asc' },
         include: { lesson: { select: lessonSelect } },
       },
@@ -389,9 +386,9 @@ export async function addLessonToPlaylist(classroomId: number, playlistId: numbe
   const playlist = await prisma.classroomPlaylist.findUnique({ where: { id: playlistId } });
   if (!playlist || playlist.classroomId !== classroomId) throw new AppError(404, 'Playlist not found.');
 
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
-  if (!lesson || lesson.statusId !== getStatusId('published')) {
-    throw new AppError(404, 'Lesson not found or not published.');
+  const lesson = await prisma.lesson.findFirst({ where: { id: lessonId, deletedAt: null } });
+  if (!lesson || lesson.status !== 'ready') {
+    throw new AppError(404, 'Lesson not found or not ready.');
   }
 
   const existing = await prisma.classroomPlaylistLesson.findUnique({
@@ -441,14 +438,6 @@ export async function removeLessonFromPlaylist(classroomId: number, playlistId: 
   await prisma.classroomPlaylistLesson.delete({ where: { id: entry.id } });
 }
 
-// ─── Admin: set tier ──────────────────────────────────────────────────────────
-
-export async function setTier(classroomId: number, tier: 'free' | 'premium') {
-  const classroom = await prisma.classroom.findUnique({ where: { id: classroomId } });
-  if (!classroom) throw new AppError(404, 'Classroom not found.');
-  return prisma.classroom.update({ where: { id: classroomId }, data: { tier } });
-}
-
 // ─── Classroom Puzzles ────────────────────────────────────────────────────────
 
 const puzzleSelect = {
@@ -466,30 +455,42 @@ const puzzleSelect = {
   updatedAt: true,
 };
 
-export async function listPuzzles(classroomId: number, requesterId: number) {
-  await requireAccess(classroomId, requesterId);
-  // Only return standalone puzzles (not attached to a classroom lesson)
-  return prisma.classroomPuzzle.findMany({
+/** Coaches (classroom owner), club admins, and admins see the solution; plain users (students) do not. */
+function isPrivileged(classroom: { ownerId: number }, requesterId: number, requesterRole: string): boolean {
+  return can(
+    { id: requesterId, role: requesterRole, clubId: null },
+    'viewSolution',
+    { type: 'ClassroomPuzzle', isOwner: classroom.ownerId === requesterId },
+  );
+}
+
+export async function listPuzzles(classroomId: number, requesterId: number, requesterRole: string) {
+  const classroom = await requireAccess(classroomId, requesterId);
+  const puzzles = await prisma.classroomPuzzle.findMany({
     where: { classroomId, lessonId: null },
     orderBy: { createdAt: 'asc' },
     select: { ...puzzleSelect, _count: { select: { submissions: true } } },
   });
+  if (isPrivileged(classroom, requesterId, requesterRole)) return puzzles;
+  return puzzles.map(({ solution: _s, ...rest }) => rest);
 }
 
-export async function getPuzzle(classroomId: number, puzzleId: number, requesterId: number) {
-  await requireAccess(classroomId, requesterId);
+export async function getPuzzle(classroomId: number, puzzleId: number, requesterId: number, requesterRole: string) {
+  const classroom = await requireAccess(classroomId, requesterId);
   const puzzle = await prisma.classroomPuzzle.findUnique({
     where: { id: puzzleId },
     select: { ...puzzleSelect, _count: { select: { submissions: true } } },
   });
   if (!puzzle || puzzle.classroomId !== classroomId) throw new AppError(404, 'Puzzle not found.');
-  return puzzle;
+  if (isPrivileged(classroom, requesterId, requesterRole)) return puzzle;
+  const { solution: _s, ...rest } = puzzle;
+  return rest;
 }
 
 export async function createPuzzle(
   classroomId: number,
   ownerId: number,
-  data: { title: string; description?: string; fen: string; sideToMove: string; dueDate?: string | null; lessonId?: number | null },
+  data: { title: string; description?: string; fen: string; sideToMove: string; solution?: string | null; maxMoves?: number | null; dueDate?: string | null; lessonId?: number | null },
 ) {
   await requireOwner(classroomId, ownerId);
   // If attaching to a lesson, verify the lesson belongs to this classroom
@@ -505,6 +506,8 @@ export async function createPuzzle(
       description: data.description?.trim() || null,
       fen: data.fen.trim(),
       sideToMove: data.sideToMove,
+      solution: data.solution?.trim() || null,
+      maxMoves: data.maxMoves ?? null,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
     },
     select: { ...puzzleSelect, _count: { select: { submissions: true } } },
@@ -515,7 +518,7 @@ export async function updatePuzzle(
   classroomId: number,
   puzzleId: number,
   ownerId: number,
-  data: { title?: string; description?: string; fen?: string; sideToMove?: string; dueDate?: string | null },
+  data: { title?: string; description?: string; fen?: string; sideToMove?: string; solution?: string | null; maxMoves?: number | null; dueDate?: string | null },
 ) {
   await requireOwner(classroomId, ownerId);
   const puzzle = await prisma.classroomPuzzle.findUnique({ where: { id: puzzleId } });
@@ -533,6 +536,8 @@ export async function updatePuzzle(
       ...(data.description !== undefined ? { description: data.description.trim() || null } : {}),
       ...(data.fen !== undefined ? { fen: data.fen.trim() } : {}),
       ...(data.sideToMove !== undefined ? { sideToMove: data.sideToMove } : {}),
+      ...(data.solution !== undefined ? { solution: data.solution?.trim() || null } : {}),
+      ...(data.maxMoves !== undefined ? { maxMoves: data.maxMoves } : {}),
       ...(data.dueDate !== undefined ? { dueDate: data.dueDate ? new Date(data.dueDate) : null } : {}),
     },
     select: { ...puzzleSelect, _count: { select: { submissions: true } } },
@@ -552,7 +557,7 @@ export async function listSubmissions(classroomId: number, puzzleId: number, own
   if (!puzzle || puzzle.classroomId !== classroomId) throw new AppError(404, 'Puzzle not found.');
 
   return prisma.classroomPuzzleSubmission.findMany({
-    where: { puzzleId },
+    where: { puzzleId, user: { deletedAt: null } },
     orderBy: { submittedAt: 'asc' },
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
@@ -629,16 +634,36 @@ export async function submitPuzzle(
   });
 }
 
-// ─── Admin: set tier ──────────────────────────────────────────────────────────
-
 export async function adminListClassrooms(page = 1, limit = 20) {
   const skip = (page - 1) * limit;
+  const where = { deletedAt: null };
   const [total, classrooms] = await Promise.all([
-    prisma.classroom.count(),
+    prisma.classroom.count({ where }),
     prisma.classroom.findMany({
+      where,
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
+      include: {
+        owner: { select: { id: true, username: true, email: true } },
+        _count: { select: { members: true, playlists: true } },
+      },
+    }),
+  ]);
+  return { classrooms, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+/** Admin-only: list soft-deleted classrooms so they can be restored or purged. */
+export async function adminListDeletedClassrooms(page = 1, limit = 20) {
+  const skip = (page - 1) * limit;
+  const where = { deletedAt: { not: null } };
+  const [total, classrooms] = await Promise.all([
+    prisma.classroom.count({ where }),
+    prisma.classroom.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
       include: {
         owner: { select: { id: true, username: true, email: true } },
         _count: { select: { members: true, playlists: true } },
@@ -667,8 +692,8 @@ export async function listClassroomLessons(classroomId: number, requesterId: num
   });
 }
 
-export async function getClassroomLesson(classroomId: number, lessonId: number, requesterId: number) {
-  await requireAccess(classroomId, requesterId);
+export async function getClassroomLesson(classroomId: number, lessonId: number, requesterId: number, requesterRole: string) {
+  const classroom = await requireAccess(classroomId, requesterId);
   const lesson = await prisma.classroomLesson.findUnique({
     where: { id: lessonId },
     include: {
@@ -679,7 +704,11 @@ export async function getClassroomLesson(classroomId: number, lessonId: number, 
     },
   });
   if (!lesson || lesson.classroomId !== classroomId) throw new AppError(404, 'Lesson not found.');
-  return lesson;
+  if (isPrivileged(classroom, requesterId, requesterRole)) return lesson;
+  return {
+    ...lesson,
+    puzzles: lesson.puzzles.map(({ solution: _s, ...rest }) => rest),
+  };
 }
 
 export async function createClassroomLesson(
@@ -693,7 +722,7 @@ export async function createClassroomLesson(
     data: {
       classroomId,
       title: data.title.trim(),
-      content: data.content,
+      content: sanitize(data.content),
       sortOrder: nextOrder,
     },
   });
@@ -712,7 +741,7 @@ export async function updateClassroomLesson(
     where: { id: lessonId },
     data: {
       ...(data.title !== undefined ? { title: data.title.trim() } : {}),
-      ...(data.content !== undefined ? { content: data.content } : {}),
+      ...(data.content !== undefined ? { content: sanitize(data.content) } : {}),
       ...(data.sortOrder !== undefined ? { sortOrder: data.sortOrder } : {}),
     },
   });

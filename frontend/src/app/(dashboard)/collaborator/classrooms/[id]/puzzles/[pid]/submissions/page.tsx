@@ -25,8 +25,8 @@ export default function SubmissionsPage() {
     async function load() {
       try {
         const [pRes, sRes] = await Promise.all([
-          api.get<ClassroomPuzzle>(`/classrooms/${classroomId}/puzzles/${puzzleId}`),
-          api.get<ClassroomPuzzleSubmission[]>(`/classrooms/${classroomId}/puzzles/${puzzleId}/submissions`),
+          api.get<{ data: ClassroomPuzzle }>(`/classrooms/${classroomId}/puzzles/${puzzleId}`),
+          api.get<{ data: ClassroomPuzzleSubmission[] }>(`/classrooms/${classroomId}/puzzles/${puzzleId}/submissions`),
         ]);
         setPuzzle(pRes.data);
         setSubmissions(sRes.data);
@@ -61,7 +61,7 @@ export default function SubmissionsPage() {
       {/* Puzzle recap */}
       {puzzle && (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-4 flex gap-6 items-start flex-wrap">
-          <ChessBoard fen={puzzle.fen} orientation={puzzle.sideToMove} size={160} />
+          <ChessBoard fen={puzzle.fen} orientation={puzzle.sideToMove as 'white' | 'black'} size={160} />
           <div className="text-sm flex-1 min-w-0">
             <p className="font-semibold text-gray-800 dark:text-gray-100">{puzzle.title}</p>
             {puzzle.description && <p className="text-gray-500 dark:text-gray-400 mt-1">{puzzle.description}</p>}
@@ -151,9 +151,7 @@ function SubmissionCard({
   onReviewed: (updated: ClassroomPuzzleSubmission) => void;
 }) {
   const student = submission.user;
-  const isLate = submission.puzzle
-    ? false
-    : false; // Late check done on list view
+  const isLate = false;
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">

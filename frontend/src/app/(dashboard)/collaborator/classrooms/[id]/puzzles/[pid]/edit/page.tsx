@@ -31,7 +31,7 @@ export default function EditPuzzlePage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await api.get<ClassroomPuzzle>(`/classrooms/${classroomId}/puzzles/${puzzleId}`);
+        const res = await api.get<{ data: ClassroomPuzzle }>(`/classrooms/${classroomId}/puzzles/${puzzleId}`);
         const p = res.data;
         setPuzzle(p);
         setTitle(p.title);

@@ -21,10 +21,13 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "next": ["./node_modules/next"],
+      "next/*": ["./node_modules/next/*"]
     }
   },
   "include": [

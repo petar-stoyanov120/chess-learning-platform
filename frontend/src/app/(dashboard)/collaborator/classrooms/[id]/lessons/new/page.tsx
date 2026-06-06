@@ -61,7 +61,7 @@ export default function NewClassroomLessonPage() {
     }
     setSavingPuzzle(form.localId);
     try {
-      const res = await api.post<ClassroomPuzzle>(`/classrooms/${classroomId}/puzzles`, {
+      const res = await api.post<{ data: ClassroomPuzzle }>(`/classrooms/${classroomId}/puzzles`, {
         title: form.title.trim(),
         description: form.description.trim() || undefined,
         fen: form.fen.trim(),
@@ -99,7 +99,7 @@ export default function NewClassroomLessonPage() {
     }
     setSaving(true);
     try {
-      const res = await api.post<{ id: number }>(`/classrooms/${classroomId}/classroom-lessons`, {
+      const res = await api.post<{ data: { id: number } }>(`/classrooms/${classroomId}/classroom-lessons`, {
         title: title.trim(),
         content,
       });

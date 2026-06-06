@@ -1,8 +1,8 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
 
-export async function markLessonComplete(userId: number, lessonSlug: string) {
-  const lesson = await prisma.lesson.findUnique({ where: { slug: lessonSlug }, select: { id: true } });
+export async function markLessonComplete(userId: number, lessonId: number) {
+  const lesson = await prisma.lesson.findFirst({ where: { id: lessonId, deletedAt: null }, select: { id: true } });
   if (!lesson) throw new AppError(404, 'Lesson not found.');
 
   return prisma.lessonProgress.upsert({

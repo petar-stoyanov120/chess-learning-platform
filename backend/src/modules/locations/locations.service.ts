@@ -1,12 +1,16 @@
 import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
 import { AuthUser } from '../../middleware/authenticate';
+import { can } from '../../policy';
+import { sanitize } from '../../utils/sanitizeHtml';
+import { requireLocationModerate, requireLocationOwner } from '../../policy/guards';
 import {
-  hasLocationAccess,
-  isSameClub,
-  requireLocationAccess,
-  requireLocationOwner,
-} from '../../utils/locationAccess';
+  getLocationRole,
+  isClassroomMemberAtLocation,
+  sameClub,
+  userHasLocationAccess,
+} from '../../policy/context';
+import { LocationRole } from '../../policy/types';
 
 const NOTICE_EXPIRY_HOURS = 48;
 
@@ -98,15 +102,20 @@ export async function getLocation(locationId: number, user: AuthUser) {
   });
   if (!location) throw new AppError(404, 'Location not found.');
 
-  // Check visibility: same-club members/coaches can see it; others can't
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
-  const sameClub = isCoach || (await isSameClub(prisma, locationId, user));
+  // Derive the requester's role at this location from the already-fetched
+  // coaches list — no extra queries (M1). clubId is on the same row.
+  const myCoach = location.coaches.find((c) => c.userId === user.id);
+  const locationRole = (myCoach?.role ?? null) as LocationRole;
+  const isCoach = user.role === 'admin' || locationRole !== null;
 
-  if (!sameClub && user.role !== 'admin') {
+  const canView = can(user, 'view', {
+    type: 'Location',
+    locationRole,
+    sameClub: sameClub(user, location.clubId),
+  });
+  if (!canView) {
     throw new AppError(404, 'Location not found.');
   }
-
-  const myCoach = location.coaches.find((c) => c.userId === user.id);
 
   return {
     ...maskLocationFields(location, isCoach),
@@ -153,12 +162,12 @@ export async function listLocationClassrooms(locationId: number, user: AuthUser)
   const location = await prisma.location.findUnique({ where: { id: locationId }, select: { clubId: true } });
   if (!location) throw new AppError(404, 'Location not found.');
 
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
+  const isCoach = await userHasLocationAccess(prisma, locationId, user);
 
   if (isCoach) {
     // Coach/admin sees all classrooms at this location
     return prisma.classroom.findMany({
-      where: { locationId },
+      where: { locationId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       include: {
         owner: { select: { id: true, username: true, displayName: true } },
@@ -171,7 +180,7 @@ export async function listLocationClassrooms(locationId: number, user: AuthUser)
   const memberClassrooms = await prisma.classroomMember.findMany({
     where: {
       userId: user.id,
-      classroom: { locationId },
+      classroom: { locationId, deletedAt: null },
     },
     include: {
       classroom: {
@@ -193,7 +202,7 @@ export async function listLocationClassrooms(locationId: number, user: AuthUser)
 // ─── Coaches ──────────────────────────────────────────────────────────────────
 
 export async function listLocationCoaches(locationId: number, user: AuthUser) {
-  await requireLocationAccess(prisma, locationId, user);
+  await requireLocationModerate(prisma, locationId, user);
   return prisma.locationCoach.findMany({
     where: { locationId },
     include: {
@@ -204,13 +213,11 @@ export async function listLocationCoaches(locationId: number, user: AuthUser) {
 }
 
 export async function addCoach(locationId: number, user: AuthUser, emailOrUsername: string, role: 'owner' | 'coach') {
-  await requireLocationOwner(prisma, locationId, user);
-
-  const location = await prisma.location.findUnique({ where: { id: locationId }, select: { clubId: true } });
-  if (!location) throw new AppError(404, 'Location not found.');
+  // The owner guard already fetched the location — reuse its clubId (M1).
+  const { location } = await requireLocationOwner(prisma, locationId, user);
 
   const target = await prisma.user.findFirst({
-    where: { OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
+    where: { deletedAt: null, OR: [{ email: emailOrUsername }, { username: emailOrUsername }] },
     include: { role: true },
   });
   if (!target) throw new AppError(404, 'User not found.');
@@ -259,21 +266,26 @@ export async function removeCoach(locationId: number, user: AuthUser, targetUser
 
 /** Check if user can view the notice board at this location */
 async function canViewNotices(locationId: number, user: AuthUser): Promise<boolean> {
-  if (user.role === 'admin') return true;
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
-  if (isCoach) return true;
-  // Check if user is a member of any classroom at this location
-  const membership = await prisma.classroomMember.findFirst({
-    where: { userId: user.id, classroom: { locationId } },
+  const locationRole = user.role === 'admin' ? null : await getLocationRole(prisma, locationId, user.id);
+  // Only fall back to a membership lookup when role/admin can't already grant access.
+  const isMemberAtLocation =
+    user.role === 'admin' || locationRole !== null
+      ? false
+      : await isClassroomMemberAtLocation(prisma, locationId, user.id);
+  return can(user, 'viewBoard', {
+    type: 'LocationNotice',
+    locationRole,
+    sameClub: false,
+    isAuthor: false,
+    isMemberAtLocation,
   });
-  return membership !== null;
 }
 
 export async function listNotices(locationId: number, user: AuthUser) {
   const canView = await canViewNotices(locationId, user);
   if (!canView) throw new AppError(404, 'Location not found.');
 
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
+  const isCoach = await userHasLocationAccess(prisma, locationId, user);
   const now = new Date();
 
   const notices = await prisma.locationNotice.findMany({
@@ -313,22 +325,32 @@ export async function createNotice(
   const location = await prisma.location.findUnique({ where: { id: locationId }, select: { clubId: true } });
   if (!location) throw new AppError(404, 'Location not found.');
 
-  if (user.role !== 'admin') {
-    if (!user.clubId || user.clubId !== location.clubId) {
+  const inSameClub = sameClub(user, location.clubId);
+  const locationRole = user.role === 'admin' ? null : await getLocationRole(prisma, locationId, user.id);
+
+  const allowed = can(user, 'create', {
+    type: 'LocationNotice',
+    locationRole,
+    sameClub: inSameClub,
+    isAuthor: false,
+    isMemberAtLocation: false,
+  });
+  if (!allowed) {
+    // Preserve the distinct wrong-club vs wrong-role messages.
+    if (user.role !== 'admin' && !inSameClub) {
       throw new AppError(403, 'You must belong to this club to post notices.');
     }
-    if (!['club_admin', 'coach'].includes(user.role)) {
-      throw new AppError(403, 'Only coaches and club admins can post notices.');
-    }
+    throw new AppError(403, 'Only coaches and club admins can post notices.');
   }
 
-  const isAssignedCoach = await hasLocationAccess(prisma, locationId, user);
+  // Assigned coaches (and admins) publish immediately; a same-club substitute
+  // coach's notice goes to pending with a 48h expiry.
+  const isAssignedCoach = user.role === 'admin' || locationRole !== null;
 
   let status = 'published';
   let expiresAt: Date | null = null;
 
-  if (!isAssignedCoach && user.role !== 'admin') {
-    // Substitute coach: goes to pending with 48h expiry
+  if (!isAssignedCoach) {
     status = 'pending';
     expiresAt = new Date(Date.now() + NOTICE_EXPIRY_HOURS * 60 * 60 * 1000);
   }
@@ -338,7 +360,7 @@ export async function createNotice(
       locationId,
       authorId: user.id,
       title: data.title.trim(),
-      content: data.content.trim(),
+      content: sanitize(data.content),
       status,
       expiresAt,
     },
@@ -357,10 +379,15 @@ export async function updateNotice(
   const notice = await prisma.locationNotice.findUnique({ where: { id: noticeId } });
   if (!notice || notice.locationId !== locationId) throw new AppError(404, 'Notice not found.');
 
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
-  const isAuthor = notice.authorId === user.id;
-
-  if (!isCoach && !isAuthor && user.role !== 'admin') {
+  const locationRole = user.role === 'admin' ? null : await getLocationRole(prisma, locationId, user.id);
+  const allowed = can(user, 'edit', {
+    type: 'LocationNotice',
+    locationRole,
+    sameClub: false,
+    isAuthor: notice.authorId === user.id,
+    isMemberAtLocation: false,
+  });
+  if (!allowed) {
     throw new AppError(403, 'You cannot edit this notice.');
   }
   if (['approved', 'rejected', 'expired'].includes(notice.status)) {
@@ -371,7 +398,7 @@ export async function updateNotice(
     where: { id: noticeId },
     data: {
       ...(data.title !== undefined ? { title: data.title.trim() } : {}),
-      ...(data.content !== undefined ? { content: data.content.trim() } : {}),
+      ...(data.content !== undefined ? { content: sanitize(data.content) } : {}),
     },
     include: {
       author: { select: { id: true, username: true, displayName: true } },
@@ -383,10 +410,15 @@ export async function deleteNotice(locationId: number, noticeId: number, user: A
   const notice = await prisma.locationNotice.findUnique({ where: { id: noticeId } });
   if (!notice || notice.locationId !== locationId) throw new AppError(404, 'Notice not found.');
 
-  const isCoach = await hasLocationAccess(prisma, locationId, user);
-  const isAuthor = notice.authorId === user.id;
-
-  if (!isCoach && !isAuthor && user.role !== 'admin') {
+  const locationRole = user.role === 'admin' ? null : await getLocationRole(prisma, locationId, user.id);
+  const allowed = can(user, 'delete', {
+    type: 'LocationNotice',
+    locationRole,
+    sameClub: false,
+    isAuthor: notice.authorId === user.id,
+    isMemberAtLocation: false,
+  });
+  if (!allowed) {
     throw new AppError(403, 'You cannot delete this notice.');
   }
 
@@ -394,7 +426,7 @@ export async function deleteNotice(locationId: number, noticeId: number, user: A
 }
 
 export async function approveNotice(locationId: number, noticeId: number, user: AuthUser) {
-  await requireLocationAccess(prisma, locationId, user);
+  await requireLocationModerate(prisma, locationId, user);
 
   const notice = await prisma.locationNotice.findUnique({ where: { id: noticeId } });
   if (!notice || notice.locationId !== locationId) throw new AppError(404, 'Notice not found.');
@@ -416,7 +448,7 @@ export async function approveNotice(locationId: number, noticeId: number, user: 
 }
 
 export async function rejectNotice(locationId: number, noticeId: number, user: AuthUser) {
-  await requireLocationAccess(prisma, locationId, user);
+  await requireLocationModerate(prisma, locationId, user);
 
   const notice = await prisma.locationNotice.findUnique({ where: { id: noticeId } });
   if (!notice || notice.locationId !== locationId) throw new AppError(404, 'Notice not found.');

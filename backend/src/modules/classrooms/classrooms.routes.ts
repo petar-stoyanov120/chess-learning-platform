@@ -14,13 +14,17 @@ router.get('/', ctrl.listMyClassrooms);
 // ─── Join via invite code ─────────────────────────────────────────────────
 router.post('/join', ctrl.joinClassroom);
 
-// ─── Create (collaborator/admin/club_admin/coach only) ────────────────────
-router.post('/', authorize('collaborator', 'admin', 'club_admin', 'coach'), ctrl.createClassroom);
+// ─── Create (admin/club_admin/coach only) ─────────────────────────────────
+router.post('/', authorize('admin', 'club_admin', 'coach'), ctrl.createClassroom);
 
 // ─── Single classroom routes ──────────────────────────────────────────────
 router.get('/:id', ctrl.getClassroom);
 router.patch('/:id', ctrl.updateClassroom);
 router.delete('/:id', ctrl.deleteClassroom);
+
+// ─── Admin-only soft-delete management ────────────────────────────────────
+router.post('/:id/restore', authorize('admin'), ctrl.restoreClassroom);
+router.delete('/:id/hard', authorize('admin'), ctrl.hardDeleteClassroom);
 
 // ─── Membership ───────────────────────────────────────────────────────────
 router.post('/:id/leave', ctrl.leaveClassroom);

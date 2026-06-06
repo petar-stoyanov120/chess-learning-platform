@@ -44,14 +44,14 @@ export default function EditClassroomLessonPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await api.get<ClassroomLesson>(`/classrooms/${classroomId}/classroom-lessons/${lessonId}`);
+        const res = await api.get<{ data: ClassroomLesson }>(`/classrooms/${classroomId}/classroom-lessons/${lessonId}`);
         const lesson = res.data;
         setTitle(lesson.title);
         setContent(lesson.content ?? '');
         // Load existing lesson puzzles
         if (lesson.puzzles && lesson.puzzles.length > 0) {
           setPuzzleForms(
-            lesson.puzzles.map((pz) => ({
+            lesson.puzzles.map((pz: ClassroomPuzzle) => ({
               localId: nextLocalId++,
               puzzleId: pz.id,
               title: pz.title,
@@ -122,7 +122,7 @@ export default function EditClassroomLessonPage() {
         });
       } else {
         // Create new puzzle attached to this lesson
-        const res = await api.post<ClassroomPuzzle>(`/classrooms/${classroomId}/puzzles`, {
+        const res = await api.post<{ data: ClassroomPuzzle }>(`/classrooms/${classroomId}/puzzles`, {
           title: form.title.trim(),
           description: form.description.trim() || undefined,
           fen: form.fen.trim(),

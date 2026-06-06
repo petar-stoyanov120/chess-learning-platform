@@ -30,9 +30,9 @@ export async function optionalAuthenticate(req: Request, _res: Response, next: N
     const payload = jwt.verify(token, jwtConfig.accessSecret) as AuthUser;
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { tokenVersion: true, isActive: true },
+      select: { tokenVersion: true, isActive: true, deletedAt: true },
     });
-    if (dbUser && dbUser.isActive && dbUser.tokenVersion === payload.tokenVersion) {
+    if (dbUser && dbUser.isActive && !dbUser.deletedAt && dbUser.tokenVersion === payload.tokenVersion) {
       req.user = payload;
     }
   } catch {
@@ -54,10 +54,10 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     // Verify token version matches DB (catches password-change invalidation)
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { tokenVersion: true, isActive: true },
+      select: { tokenVersion: true, isActive: true, deletedAt: true },
     });
 
-    if (!dbUser || !dbUser.isActive || dbUser.tokenVersion !== payload.tokenVersion) {
+    if (!dbUser || !dbUser.isActive || dbUser.deletedAt || dbUser.tokenVersion !== payload.tokenVersion) {
       return next(new AppError(401, 'Invalid or expired token.'));
     }
 

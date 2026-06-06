@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { Classroom } from '@/lib/types';
 import { useToast } from '@/lib/toast';
 
-export default function JoinClassroomPage() {
+function JoinClassroomForm() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
@@ -77,5 +77,13 @@ export default function JoinClassroomPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function JoinClassroomPage() {
+  return (
+    <Suspense>
+      <JoinClassroomForm />
+    </Suspense>
   );
 }

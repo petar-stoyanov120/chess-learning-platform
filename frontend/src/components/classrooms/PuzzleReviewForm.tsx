@@ -45,7 +45,7 @@ export default function PuzzleReviewForm({ submission, classroomId, puzzleId, on
     }
     setLoading(true);
     try {
-      const res = await api.patch<ClassroomPuzzleSubmission>(
+      const res = await api.patch<{ data: ClassroomPuzzleSubmission }>(
         `/classrooms/${classroomId}/puzzles/${puzzleId}/submissions/${submission.id}`,
         { isCorrect, coachFeedback: feedback.trim() || undefined },
       );

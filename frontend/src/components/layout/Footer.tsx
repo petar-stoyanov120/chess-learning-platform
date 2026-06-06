@@ -10,20 +10,12 @@ export default function Footer() {
               <span className="text-2xl">♟</span>
               <span>ChessLearn</span>
             </div>
-            <p className="text-sm">Learn chess through structured lessons, from beginner to advanced.</p>
+            <p className="text-sm">Club management platform for Bulgarian chess clubs.</p>
           </div>
           <div>
-            <h3 className="text-white font-semibold mb-3">Learn</h3>
+            <h3 className="text-white font-semibold mb-3">Account</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/learn/openings/beginner" className="hover:text-white transition-colors">Openings</Link></li>
-              <li><Link href="/learn/concepts/beginner" className="hover:text-white transition-colors">Concepts</Link></li>
-              <li><Link href="/learn/endgames/beginner" className="hover:text-white transition-colors">Endgames</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-white font-semibold mb-3">More</h3>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+              <li><Link href="/login" className="hover:text-white transition-colors">Log in</Link></li>
               <li><Link href="/register" className="hover:text-white transition-colors">Create Account</Link></li>
             </ul>
           </div>

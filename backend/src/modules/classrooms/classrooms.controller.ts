@@ -94,6 +94,22 @@ export async function deleteClassroom(req: Request, res: Response, next: NextFun
   } catch (err) { next(err); }
 }
 
+export async function restoreClassroom(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseId(req.params.id);
+    const result = await service.restoreClassroom(id);
+    sendSuccess(res, result);
+  } catch (err) { next(err); }
+}
+
+export async function hardDeleteClassroom(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseId(req.params.id);
+    await service.hardDeleteClassroom(id);
+    sendSuccess(res, { message: 'Classroom permanently deleted.' });
+  } catch (err) { next(err); }
+}
+
 // ─── Membership ───────────────────────────────────────────────────────────────
 
 export async function joinClassroom(req: Request, res: Response, next: NextFunction) {
@@ -154,7 +170,7 @@ export async function createPlaylist(req: Request, res: Response, next: NextFunc
     const classroomId = parseId(req.params.id);
     const parsed = createPlaylistSchema.safeParse(req.body);
     if (!parsed.success) return next(new AppError(400, parsed.error.errors[0].message));
-    const result = await service.createPlaylist(classroomId, req.user!.id, req.user!.role, parsed.data);
+    const result = await service.createPlaylist(classroomId, req.user!.id, parsed.data);
     sendSuccess(res, result, 201);
   } catch (err) { next(err); }
 }
@@ -251,7 +267,7 @@ const reviewSchema = z.object({
 export async function listPuzzles(req: Request, res: Response, next: NextFunction) {
   try {
     const classroomId = parseId(req.params.id);
-    const result = await service.listPuzzles(classroomId, req.user!.id);
+    const result = await service.listPuzzles(classroomId, req.user!.id, req.user!.role);
     sendSuccess(res, result);
   } catch (err) { next(err); }
 }
@@ -270,7 +286,7 @@ export async function getPuzzle(req: Request, res: Response, next: NextFunction)
   try {
     const classroomId = parseId(req.params.id);
     const puzzleId = parseId(req.params.pid);
-    const result = await service.getPuzzle(classroomId, puzzleId, req.user!.id);
+    const result = await service.getPuzzle(classroomId, puzzleId, req.user!.id, req.user!.role);
     sendSuccess(res, result);
   } catch (err) { next(err); }
 }
@@ -358,7 +374,7 @@ export async function getClassroomLesson(req: Request, res: Response, next: Next
   try {
     const classroomId = parseId(req.params.id);
     const lessonId = parseId(req.params.lid);
-    const result = await service.getClassroomLesson(classroomId, lessonId, req.user!.id);
+    const result = await service.getClassroomLesson(classroomId, lessonId, req.user!.id, req.user!.role);
     sendSuccess(res, result);
   } catch (err) { next(err); }
 }
@@ -404,13 +420,12 @@ export async function adminListClassrooms(req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 }
 
-export async function adminSetTier(req: Request, res: Response, next: NextFunction) {
+export async function adminListDeletedClassrooms(req: Request, res: Response, next: NextFunction) {
   try {
-    const id = parseId(req.params.id);
-    const schema = z.object({ tier: z.enum(['free', 'premium']) });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) return next(new AppError(400, parsed.error.errors[0].message));
-    const result = await service.setTier(id, parsed.data.tier);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await service.adminListDeletedClassrooms(page, limit);
     sendSuccess(res, result);
   } catch (err) { next(err); }
 }
+

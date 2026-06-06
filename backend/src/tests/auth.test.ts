@@ -21,7 +21,9 @@ describe('POST /api/v1/auth/register', () => {
     });
     expect(res.status).toBe(201);
     expect(res.body.data).toHaveProperty('accessToken');
-    expect(res.body.data).toHaveProperty('refreshToken');
+    // refreshToken is delivered as an httpOnly cookie, not in the body.
+    const setCookie = res.headers['set-cookie'] as unknown as string[] | undefined;
+    expect(setCookie?.some((c) => c.startsWith('refreshToken='))).toBe(true);
     expect(res.body.data.user.role).toBe('user');
   });
 
@@ -112,15 +114,16 @@ describe('POST /api/v1/auth/refresh', () => {
     const reg = await request.post('/api/v1/auth/register').send({
       email: 'refresh@test.com', username: 'refreshuser', password: 'password123',
     });
-    const { refreshToken } = reg.body.data;
+    // The refresh token is sent back as an httpOnly cookie; replay it on the refresh request.
+    const cookies = reg.headers['set-cookie'] as unknown as string[];
 
-    const res = await request.post('/api/v1/auth/refresh').send({ refreshToken });
+    const res = await request.post('/api/v1/auth/refresh').set('Cookie', cookies);
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('accessToken');
   });
 
   it('returns 401 for invalid refresh token', async () => {
-    const res = await request.post('/api/v1/auth/refresh').send({ refreshToken: 'bogus-token' });
+    const res = await request.post('/api/v1/auth/refresh').set('Cookie', ['refreshToken=bogus-token']);
     expect(res.status).toBe(401);
   });
 });

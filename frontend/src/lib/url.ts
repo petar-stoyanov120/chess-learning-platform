@@ -19,7 +19,6 @@ export function getRoleDisplayName(role: UserRole, clubName?: string | null): st
   switch (role) {
     case 'admin':        return 'Admin';
     case 'club_admin':   return clubName ? `${clubName} Admin` : 'Club Admin';
-    case 'collaborator': return 'Collaborator';
     case 'coach':        return clubName ? `${clubName} Coach` : 'Coach';
     case 'user':         return 'Member';
     default:             return 'Member';

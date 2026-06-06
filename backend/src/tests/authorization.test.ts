@@ -36,14 +36,6 @@ describe('Role-based authorization', () => {
     expect(res.status).toBe(403);
   });
 
-  it('blocks collaborator from approving lessons', async () => {
-    const collaborator = await createTestUser('collaborator');
-    const token = await loginUser(collaborator.email);
-
-    const res = await request.patch('/api/v1/lessons/999/approve').set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(403);
-  });
-
   it('allows admin to access admin stats', async () => {
     const admin = await createTestUser('admin');
     const token = await loginUser(admin.email);
@@ -52,11 +44,4 @@ describe('Role-based authorization', () => {
     expect(res.status).toBe(200);
   });
 
-  it('blocks collaborator from managing users', async () => {
-    const collaborator = await createTestUser('collaborator');
-    const token = await loginUser(collaborator.email);
-
-    const res = await request.get('/api/v1/users').set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(403);
-  });
 });

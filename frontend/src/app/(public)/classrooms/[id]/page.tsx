@@ -65,7 +65,7 @@ export default function ClassroomDetailPage({ params }: { params: { id: string }
 
   const loadPuzzles = useCallback(async () => {
     try {
-      const res = await api.get<ClassroomPuzzle[]>(`/classrooms/${id}/puzzles`);
+      const res = await api.get<{ data: ClassroomPuzzle[] }>(`/classrooms/${id}/puzzles`);
       setPuzzles(res.data ?? []);
     } catch {
       // no-op
@@ -74,7 +74,7 @@ export default function ClassroomDetailPage({ params }: { params: { id: string }
 
   const loadLessons = useCallback(async () => {
     try {
-      const res = await api.get<ClassroomLesson[]>(`/classrooms/${id}/classroom-lessons`);
+      const res = await api.get<{ data: ClassroomLesson[] }>(`/classrooms/${id}/classroom-lessons`);
       setLessons(res.data ?? []);
     } catch {
       // no-op
@@ -117,8 +117,8 @@ export default function ClassroomDetailPage({ params }: { params: { id: string }
   // Compute overall stats
   const totalPlaylistLessons = playlists.reduce((s, p) => s + (p._count?.lessons ?? 0), 0);
   const totalDone = playlists.reduce((s, p) => {
-    const lessons = (p as ClassroomPlaylist & { lessons?: { lessonId?: number }[] }).lessons ?? [];
-    return s + lessons.filter((l) => l.lessonId && progress.has(l.lessonId)).length;
+    const lessons = p.lessons ?? [];
+    return s + lessons.filter((l) => progress.has(l.id)).length;
   }, 0);
 
   return (
@@ -230,8 +230,8 @@ export default function ClassroomDetailPage({ params }: { params: { id: string }
             <div className="space-y-3">
               {playlists.map((p) => {
                 const total = p._count?.lessons ?? 0;
-                const playlistLessons = (p as ClassroomPlaylist & { lessons?: { lessonId?: number }[] }).lessons ?? [];
-                const done = playlistLessons.filter((l) => l.lessonId && progress.has(l.lessonId)).length;
+                const playlistLessons = p.lessons ?? [];
+                const done = playlistLessons.filter((l) => progress.has(l.id)).length;
                 return (
                   <Link
                     key={p.id}

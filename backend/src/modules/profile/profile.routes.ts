@@ -7,7 +7,6 @@ const router: Router = Router();
 
 router.use(authenticate);
 
-router.get('/daily-limit', controller.getDailyLimit);
 router.patch('/', controller.updateProfile);
 router.post('/avatar', uploadAvatarMiddleware, controller.uploadAvatar);
 router.delete('/avatar', controller.removeAvatar);

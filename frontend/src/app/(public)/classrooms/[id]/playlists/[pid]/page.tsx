@@ -119,30 +119,16 @@ export default function ClassroomPlaylistPage({ params }: { params: { id: string
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <Link
-                        href={`/learn/${lesson.category.slug}/${lesson.level.name}/${lesson.slug}`}
-                        className="font-medium text-gray-900 hover:text-chess-gold transition-colors"
-                      >
+                      <span className="font-medium text-gray-900">
                         {lesson.title}
-                      </Link>
+                      </span>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={lesson.level.name as 'beginner' | 'intermediate' | 'advanced'}>
                           {lesson.level.name}
                         </Badge>
                         <span className="text-xs text-gray-400">{lesson.category.name}</span>
-                        {lesson.readingTime && (
-                          <span className="text-xs text-gray-400">{lesson.readingTime} min</span>
-                        )}
                       </div>
                     </div>
-                    <Link
-                      href={`/learn/${lesson.category.slug}/${lesson.level.name}/${lesson.slug}`}
-                      className={`text-sm font-medium shrink-0 ${
-                        lesson.completed ? 'text-green-600' : 'text-chess-dark hover:text-chess-gold'
-                      } transition-colors`}
-                    >
-                      {lesson.completed ? 'Review →' : 'Start →'}
-                    </Link>
                   </div>
                   {lesson.excerpt && (
                     <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">{lesson.excerpt}</p>
